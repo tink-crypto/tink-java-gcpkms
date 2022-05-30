@@ -1,0 +1,54 @@
+licenses(["notice"])
+
+java_test(
+    name = "GcpKmsClientTest",
+    size = "small",
+    srcs = ["GcpKmsClientTest.java"],
+    data = ["//testdata:credential.json"],
+    runtime_deps = [
+        "@maven//:com_fasterxml_jackson_core_jackson_core",
+    ],
+    deps = [
+        "@tink_java//src/main/java/com/google/crypto/tink:kms_client",
+        "@tink_java//src/main/java/com/google/crypto/tink:kms_clients",
+        "@tink_java//src/main/java/com/google/crypto/tink:kms_clients_test_util",
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_client",
+        "@maven//:com_google_truth_truth",
+        "@maven//:junit_junit",
+    ],
+)
+
+java_test(
+    name = "KmsAeadKeyManagerWithGcpTest",
+    size = "small",
+    srcs = ["KmsAeadKeyManagerWithGcpTest.java"],
+    data = ["//testdata:credentials"],
+    tags = ["no_rbe"],
+    deps = [
+        "@tink_java//src/main/java/com/google/crypto/tink:aead",
+        "@tink_java//src/main/java/com/google/crypto/tink:registry_cluster",
+        "@tink_java//src/main/java/com/google/crypto/tink/aead:aead_config",
+        "@tink_java//src/main/java/com/google/crypto/tink/aead:aead_key_templates",
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_client",
+        "@tink_java//src/main/java/com/google/crypto/tink/testing:test_util",
+        "@maven//:junit_junit",
+    ],
+)
+
+java_test(
+    name = "KmsEnvelopeAeadKeyManagerWithGcpTest",
+    size = "small",
+    srcs = ["KmsEnvelopeAeadKeyManagerWithGcpTest.java"],
+    data = ["//testdata:credentials"],
+    tags = ["no_rbe"],
+    deps = [
+        "//proto:tink_java_proto",
+        "@tink_java//src/main/java/com/google/crypto/tink:aead",
+        "@tink_java//src/main/java/com/google/crypto/tink:registry_cluster",
+        "@tink_java//src/main/java/com/google/crypto/tink/aead:aead_config",
+        "@tink_java//src/main/java/com/google/crypto/tink/aead:aead_key_templates",
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_client",
+        "@tink_java//src/main/java/com/google/crypto/tink/testing:test_util",
+        "@maven//:junit_junit",
+    ],
+)
