@@ -1,8 +1,11 @@
 workspace(name = "tink_java_gcpkms")
 
-local_repository(
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
     name = "tink_java",
-    path = "../tink_java",
+    urls = ["https://github.com/tink-crypto/tink-java/archive/main.zip"],
+    strip_prefix = "tink-java-main",
 )
 
 load("@tink_java//:tink_java_deps.bzl", "tink_java_deps", "TINK_MAVEN_ARTIFACTS")
