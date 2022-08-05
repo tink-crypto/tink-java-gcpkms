@@ -16,12 +16,13 @@
 
 set -euo pipefail
 
-if [[ -n "${KOKORO_ROOT:-}" ]] ; then
-  cd "${KOKORO_ARTIFACTS_DIR}/git/tink_java_gcpkms"
-  use_bazel.sh "$(cat .bazelversion)"
+# If we are running on Kokoro cd into the repository.
+if [[ -n "${KOKORO_ROOT:-}" ]]; then
+  cd "${KOKORO_ARTIFACTS_DIR}/git/tink_java"
+  use_bazel.sh "$(cat examples/.bazelversion)"
 fi
 
-readonly TINK_BASE_DIR="$(pwd)/.."
+TINK_BASE_DIR="$(pwd)/.."
 
 # Note: When running on the Kokoro CI, we expect these two folders to exist:
 #
@@ -34,10 +35,30 @@ if [[ ! -d "${TINK_BASE_DIR}/tink_java" ]]; then
     "${TINK_BASE_DIR}/tink_java"
 fi
 
+# Sourcing required to update caller's environment.
 source ./kokoro/testutils/install_python3.sh
-./kokoro/testutils/copy_credentials.sh "testdata"
+./kokoro/testutils/copy_credentials.sh "examples/testdata"
 ./kokoro/testutils/update_android_sdk.sh
+
+cp "examples/WORKSPACE" "examples/WORKSPACE.bak"
+
 ./kokoro/testutils/replace_http_archive_with_local_repository.py \
-  -f "WORKSPACE" \
+  -f "examples/WORKSPACE" \
   -t "${TINK_BASE_DIR}"
-./kokoro/testutils/run_bazel_tests.sh .
+
+# Targets tagged as "manual" that require setting GCP credentials.
+MANUAL_EXAMPLE_JAVA_TARGETS=()
+if [[ -n "${KOKORO_ROOT:-}" ]]; then
+  MANUAL_EXAMPLE_JAVA_TARGETS=(
+    "//gcs:gcs_envelope_aead_example_test"
+    "//encryptedkeyset:encrypted_keyset_example_test"
+    "//envelopeaead:envelope_aead_example_test"
+  )
+fi
+readonly MANUAL_EXAMPLE_JAVA_TARGETS
+
+./kokoro/testutils/run_bazel_tests.sh \
+  "examples" \
+  "${MANUAL_EXAMPLE_JAVA_TARGETS[@]}"
+
+mv "examples/WORKSPACE.bak" "examples/WORKSPACE"
