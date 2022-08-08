@@ -18,7 +18,7 @@ set -euo pipefail
 
 # If we are running on Kokoro cd into the repository.
 if [[ -n "${KOKORO_ROOT:-}" ]]; then
-  cd "${KOKORO_ARTIFACTS_DIR}/git/tink_java"
+  cd "${KOKORO_ARTIFACTS_DIR}/git/tink_java_gcpkms"
   use_bazel.sh "$(cat examples/.bazelversion)"
 fi
 
