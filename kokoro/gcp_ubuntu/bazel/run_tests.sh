@@ -40,4 +40,16 @@ source ./kokoro/testutils/install_python3.sh
 ./kokoro/testutils/replace_http_archive_with_local_repository.py \
   -f "WORKSPACE" \
   -t "${TINK_BASE_DIR}"
-./kokoro/testutils/run_bazel_tests.sh .
+
+# Run manual tests which rely on key material injected into the Kokoro
+# environement.
+MANUAL_TARGETS=()
+if [[ -n "${KOKORO_ROOT:-}" ]]; then
+  MANUAL_TARGETS+=(
+    "//src/test/java/com/google/crypto/tink/integration/gcpkms:KmsAeadKeyManagerWithGcpTest"
+    "//src/test/java/com/google/crypto/tink/integration/gcpkms:KmsEnvelopeAeadKeyManagerWithGcpTest"
+  )
+fi
+readonly MANUAL_TARGETS
+
+./kokoro/testutils/run_bazel_tests.sh . "${MANUAL_TARGETS[@]}"
