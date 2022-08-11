@@ -39,8 +39,6 @@ if [[ ! -d "${TINK_BASE_DIR}/tink_java" ]]; then
     "${TINK_BASE_DIR}/tink_java"
 fi
 
-# Sourcing required to update caller's environment.
-source ./kokoro/testutils/install_python3.sh
 ./kokoro/testutils/copy_credentials.sh "examples/testdata" "gcp"
 ./kokoro/testutils/update_android_sdk.sh
 

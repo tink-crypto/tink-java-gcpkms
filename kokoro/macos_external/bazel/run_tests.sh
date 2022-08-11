@@ -39,7 +39,6 @@ if [[ ! -d "${TINK_BASE_DIR}/tink_java" ]]; then
     "${TINK_BASE_DIR}/tink_java"
 fi
 
-source ./kokoro/testutils/install_python3.sh
 ./kokoro/testutils/copy_credentials.sh "testdata" "gcp"
 ./kokoro/testutils/update_android_sdk.sh
 ./kokoro/testutils/replace_http_archive_with_local_repository.py \
