@@ -26,18 +26,13 @@ if [[ -n "${KOKORO_ROOT:-}" ]] ; then
   use_bazel.sh "$(cat .bazelversion)"
 fi
 
-readonly TINK_BASE_DIR="$(pwd)/.."
+: "${TINK_BASE_DIR:=$(cd .. && pwd)}"
 
-# Note: When running on the Kokoro CI, we expect these two folders to exist:
-#
-#  ${KOKORO_ARTIFACTS_DIR}/git/tink_java
-#  ${KOKORO_ARTIFACTS_DIR}/git/tink_java_gcpkms
-#
-# If running locally make sure ../tink_java exists.
-if [[ ! -d "${TINK_BASE_DIR}/tink_java" ]]; then
-  git clone "https://github.com/tink-crypto/tink-java.git" \
-    "${TINK_BASE_DIR}/tink_java"
-fi
+# Check for dependencies in TINK_BASE_DIR. Any that aren't present will be
+# downloaded.
+readonly GITHUB_ORG="https://github.com/tink-crypto"
+./kokoro/testutils/fetch_git_repo_if_not_present.sh "${TINK_BASE_DIR}" \
+  "${GITHUB_ORG}/tink-java"
 
 ./kokoro/testutils/copy_credentials.sh "testdata" "gcp"
 ./kokoro/testutils/update_android_sdk.sh
