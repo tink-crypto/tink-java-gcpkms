@@ -54,7 +54,8 @@ fi
 readonly MANUAL_EXAMPLE_JAVA_TARGETS
 
 ./kokoro/testutils/run_bazel_tests.sh \
-  "examples" \
-  "${MANUAL_EXAMPLE_JAVA_TARGETS[@]}"
+  "examples"
+#  "examples" \
+#  "${MANUAL_EXAMPLE_JAVA_TARGETS[@]}"
 
 mv "examples/WORKSPACE.bak" "examples/WORKSPACE"
