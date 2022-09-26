@@ -46,8 +46,7 @@ readonly GITHUB_ORG="https://github.com/tink-crypto"
 MANUAL_TARGETS=()
 if [[ -n "${KOKORO_ROOT:-}" ]]; then
   MANUAL_TARGETS+=(
-    "//src/test/java/com/google/crypto/tink/integration/gcpkms:KmsAeadKeyManagerWithGcpTest"
-    "//src/test/java/com/google/crypto/tink/integration/gcpkms:KmsEnvelopeAeadKeyManagerWithGcpTest"
+    "//src/test/java/com/google/crypto/tink/integration/gcpkms:GcpKmsIntegrationTest"
   )
 fi
 readonly MANUAL_TARGETS
