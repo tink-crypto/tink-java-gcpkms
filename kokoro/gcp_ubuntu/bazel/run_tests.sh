@@ -16,35 +16,108 @@
 
 set -euo pipefail
 
-if [[ -n "${KOKORO_ROOT:-}" ]] ; then
-  TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
-  cd "${TINK_BASE_DIR}/tink_java_gcpkms"
-  use_bazel.sh "$(cat .bazelversion)"
-fi
-
-: "${TINK_BASE_DIR:=$(cd .. && pwd)}"
-
-# Check for dependencies in TINK_BASE_DIR. Any that aren't present will be
-# downloaded.
 readonly GITHUB_ORG="https://github.com/tink-crypto"
-./kokoro/testutils/fetch_git_repo_if_not_present.sh "${TINK_BASE_DIR}" \
-  "${GITHUB_ORG}/tink-java"
+TINK_BASE_DIR=
 
-source ./kokoro/testutils/install_python3.sh
-./kokoro/testutils/copy_credentials.sh "testdata" "gcp"
-./kokoro/testutils/update_android_sdk.sh
-./kokoro/testutils/replace_http_archive_with_local_repository.py \
-  -f "WORKSPACE" \
-  -t "${TINK_BASE_DIR}"
+#######################################
+# Prints and error message with the missing deps for the given target diff-ing
+# the expected and actual list of targets.
+#
+# Globals:
+#   None
+# Arguments:
+#   target: Bazel target.
+#   expected_deps: Expected list of dependencies.
+#   actual_deps: Actual list of dependencies.
+# Outputs:
+#   Writes to stdout
+#######################################
+print_missing_deps() {
+  local -r target="$1"
+  local -r expected_deps="$2"
+  local -r actual_deps="$3"
 
-# Run manual tests which rely on key material injected into the Kokoro
-# environement.
-MANUAL_TARGETS=()
-if [[ -n "${KOKORO_ROOT:-}" ]]; then
-  MANUAL_TARGETS+=(
-    "//src/test/java/com/google/crypto/tink/integration/gcpkms:GcpKmsIntegrationTest"
-  )
-fi
-readonly MANUAL_TARGETS
+  echo "#========= ERROR ${target} target:"
+  echo "The following dependencies are missing from the ${target} target:"
+  diff --changed-group-format='%>' --unchanged-group-format='' \
+    "${actual_deps}" "${expected_deps}"
+  echo "#==============================="
+}
 
-./kokoro/testutils/run_bazel_tests.sh . "${MANUAL_TARGETS[@]}"
+#######################################
+# Checks if the //:tink-gcpkms has all the required dependencies.
+#
+# Globals:
+#   None
+# Arguments:
+#   None
+# Outputs:
+#   Writes to stdout
+#######################################
+test_build_bazel_file() {
+  local -r tink_java_prefix="//src/main/java/com/google/crypto/tink"
+  local -r tink_java_integration_gcpkms_prefix="${tink_java_prefix}/integration/gcpkms"
+
+  # Targets in tink_java_integration_gcpkms_prefix of type java_library,
+  # excluding testonly targets.
+  local -r expected_gcpkms_deps="$(mktemp)"
+  bazel query "\
+kind(java_library,${tink_java_integration_gcpkms_prefix}/...) \
+except attr(testonly,1,${tink_java_integration_gcpkms_prefix}/...)" \
+    > "${expected_gcpkms_deps}"
+
+  # Dependencies of //:tink-gcpkms of type java_library that are in
+  # tink_java_integration_gcpkms_prefix.
+  # Note: Considering only direct dependencies of the target.
+  local -r actual_gcpkms_targets="$(mktemp)"
+  bazel query "filter(\
+${tink_java_integration_gcpkms_prefix},\
+kind(java_library,deps(//:tink-gcpkms,1)))" \
+    > "${actual_gcpkms_targets}"
+
+  if ! cmp -s "${actual_gcpkms_targets}" "${expected_gcpkms_deps}"; then
+    print_missing_deps "//:tink-gcpkms" "${expected_gcpkms_deps}" \
+      "${actual_gcpkms_targets}"
+    exit 1
+  fi
+}
+
+main() {
+  if [[ -n "${KOKORO_ARTIFACTS_DIR:-}" ]] ; then
+    TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
+    cd "${TINK_BASE_DIR}/tink_java_gcpkms"
+    use_bazel.sh "$(cat .bazelversion)"
+  fi
+
+  : "${TINK_BASE_DIR:=$(cd .. && pwd)}"
+  readonly TINK_BASE_DIR
+
+  # Check for dependencies in TINK_BASE_DIR. Any that aren't present will be
+  # downloaded.
+  ./kokoro/testutils/fetch_git_repo_if_not_present.sh "${TINK_BASE_DIR}" \
+    "${GITHUB_ORG}/tink-java"
+
+  source ./kokoro/testutils/install_python3.sh
+  ./kokoro/testutils/copy_credentials.sh "testdata" "gcp"
+  ./kokoro/testutils/update_android_sdk.sh
+  ./kokoro/testutils/replace_http_archive_with_local_repository.py \
+    -f "WORKSPACE" \
+    -t "${TINK_BASE_DIR}"
+
+  # Make sure dependencies of //:tink-gcpkms are correct.
+  test_build_bazel_file
+
+  # Run manual tests which rely on key material injected into the Kokoro
+  # environement.
+  MANUAL_TARGETS=()
+  if [[ -n "${KOKORO_ARTIFACTS_DIR:-}" ]]; then
+    MANUAL_TARGETS+=(
+      "//src/test/java/com/google/crypto/tink/integration/gcpkms:GcpKmsIntegrationTest"
+    )
+  fi
+  readonly MANUAL_TARGETS
+
+  ./kokoro/testutils/run_bazel_tests.sh . "${MANUAL_TARGETS[@]}"
+}
+
+main "$@"
