@@ -33,11 +33,23 @@ readonly GITHUB_ORG="https://github.com/tink-crypto"
 source ./kokoro/testutils/install_python3.sh
 ./kokoro/testutils/update_android_sdk.sh
 ./kokoro/testutils/replace_http_archive_with_local_repository.py \
-  -f "WORKSPACE" \
-  -t "${TINK_BASE_DIR}"
-# Install the latest snapshot locally.
+  -f "WORKSPACE"  -t "${TINK_BASE_DIR}"
+./kokoro/testutils/copy_credentials.sh "testdata" "gcp"
+
+# Install the latest snapshots locally.
+(
+  cd "${TINK_BASE_DIR}/tink_java"
+  ./maven/maven_deploy_library.sh install tink \
+    maven/tink-java.pom.xml HEAD
+)
 ./maven/maven_deploy_library.sh install tink-gcpkms \
   maven/tink-java-gcpkms.pom.xml HEAD
-# Run tink-java's examples/helloworld against the local artifact.
-./kokoro/testutils/test_maven_snapshot.sh -l \
-  "${TINK_BASE_DIR}/tink_java/examples/helloworld/pom.xml"
+
+readonly CREDENTIALS_FILE_PATH="testdata/gcp/credential.json"
+readonly MASTER_KEY_URI="gcp-kms://projects/tink-test-infrastructure/locations/global/keyRings/unit-and-integration-testing/cryptoKeys/aead-key"
+
+# Run the local test Maven example.
+mvn package --no-snapshot-updates -f examples/maven/pom.xml
+mvn exec:java --no-snapshot-updates -f examples/maven/pom.xml \
+  -Dexec.args="keyset.json ${CREDENTIALS_FILE_PATH} ${MASTER_KEY_URI}" \
+  && echo "OK!"
