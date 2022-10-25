@@ -20,7 +20,8 @@ set -euo pipefail
 if [[ -n "${KOKORO_ROOT:-}" ]]; then
   TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
   cd "${TINK_BASE_DIR}/tink_java_gcpkms"
-  use_bazel.sh "$(cat examples/.bazelversion)"
+  chmod +x "${KOKORO_GFILE_DIR}/use_bazel.sh"
+  "${KOKORO_GFILE_DIR}/use_bazel.sh" "$(cat .bazelversion)"
 fi
 
 : "${TINK_BASE_DIR:=$(cd .. && pwd)}"
@@ -31,16 +32,12 @@ readonly GITHUB_ORG="https://github.com/tink-crypto"
 ./kokoro/testutils/fetch_git_repo_if_not_present.sh "${TINK_BASE_DIR}" \
   "${GITHUB_ORG}/tink-java"
 
-# Sourcing required to update caller's environment.
-source ./kokoro/testutils/install_python3.sh
 ./kokoro/testutils/copy_credentials.sh "examples/testdata" "gcp"
-./kokoro/testutils/update_android_sdk.sh
 
 cp "examples/WORKSPACE" "examples/WORKSPACE.bak"
 
 ./kokoro/testutils/replace_http_archive_with_local_repository.py \
-  -f "examples/WORKSPACE" \
-  -t "${TINK_BASE_DIR}"
+  -f "examples/WORKSPACE" -t "${TINK_BASE_DIR}"
 
 # Targets tagged as "manual" that require setting GCP credentials.
 MANUAL_EXAMPLE_JAVA_TARGETS=()
