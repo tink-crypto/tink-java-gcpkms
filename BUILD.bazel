@@ -16,7 +16,7 @@ gen_maven_jar_rules(
         "Automatic-Module-Name: com.google.crypto.tink.integration.gcpkms",
     ],
     root_packages = [
-        "com.google.crypto.tink",
+        "com.google.crypto.tink.integration.gcpkms",
     ],
     deps = [
         "//src/main/java/com/google/crypto/tink/integration/gcpkms:fake_cloud_kms",
