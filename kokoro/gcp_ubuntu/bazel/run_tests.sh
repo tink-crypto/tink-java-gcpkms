@@ -18,6 +18,7 @@ set -euo pipefail
 
 readonly GITHUB_ORG="https://github.com/tink-crypto"
 TINK_BASE_DIR=
+BAZEL_CMD="bazel"
 
 #######################################
 # Prints and error message with the missing deps for the given target diff-ing
@@ -61,7 +62,7 @@ test_build_bazel_file() {
   # Targets in tink_java_integration_gcpkms_prefix of type java_library,
   # excluding testonly targets.
   local -r expected_gcpkms_deps="$(mktemp)"
-  bazel query "\
+  "${BAZEL_CMD}" query "\
 kind(java_library,${tink_java_integration_gcpkms_prefix}/...) \
 except attr(testonly,1,${tink_java_integration_gcpkms_prefix}/...)" \
     > "${expected_gcpkms_deps}"
@@ -70,7 +71,7 @@ except attr(testonly,1,${tink_java_integration_gcpkms_prefix}/...)" \
   # tink_java_integration_gcpkms_prefix.
   # Note: Considering only direct dependencies of the target.
   local -r actual_gcpkms_targets="$(mktemp)"
-  bazel query "filter(\
+  "${BAZEL_CMD}" query "filter(\
 ${tink_java_integration_gcpkms_prefix},\
 kind(java_library,deps(//:tink-gcpkms,1)))" \
     > "${actual_gcpkms_targets}"
@@ -86,12 +87,16 @@ main() {
   if [[ -n "${KOKORO_ARTIFACTS_DIR:-}" ]] ; then
     TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
     cd "${TINK_BASE_DIR}/tink_java_gcpkms"
-    chmod +x "${KOKORO_GFILE_DIR}/use_bazel.sh"
-    "${KOKORO_GFILE_DIR}/use_bazel.sh" "$(cat .bazelversion)"
   fi
 
   : "${TINK_BASE_DIR:=$(cd .. && pwd)}"
   readonly TINK_BASE_DIR
+
+  # Prefer using Bazelisk if available.
+  if command -v "bazelisk" &> /dev/null; then
+    BAZEL_CMD="bazelisk"
+  fi
+  readonly BAZEL_CMD
 
   # Check for dependencies in TINK_BASE_DIR. Any that aren't present will be
   # downloaded.
