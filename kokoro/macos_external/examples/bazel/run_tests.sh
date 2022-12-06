@@ -16,15 +16,15 @@
 
 set -euo pipefail
 
-export XCODE_VERSION=11.3
+export XCODE_VERSION=14
 export DEVELOPER_DIR="/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
-export ANDROID_HOME="/Users/kbuilder/Library/Android/sdk"
+export ANDROID_HOME="/usr/local/share/android-sdk"
 export COURSIER_OPTS="-Djava.net.preferIPv6Addresses=true"
 
 if [[ -n "${KOKORO_ROOT:-}" ]]; then
   TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
   cd "${TINK_BASE_DIR}/tink_java_gcpkms"
-  use_bazel.sh "$(cat examples/.bazelversion)"
+  export JAVA_HOME=$(/usr/libexec/java_home -v "1.8.0_292")
 fi
 
 : "${TINK_BASE_DIR:=$(cd .. && pwd)}"
@@ -41,8 +41,7 @@ readonly GITHUB_ORG="https://github.com/tink-crypto"
 cp "examples/WORKSPACE" "examples/WORKSPACE.bak"
 
 ./kokoro/testutils/replace_http_archive_with_local_repository.py \
-  -f "examples/WORKSPACE" \
-  -t "${TINK_BASE_DIR}"
+  -f "examples/WORKSPACE" -t "${TINK_BASE_DIR}"
 
 # Targets tagged as "manual" that require setting GCP credentials.
 MANUAL_EXAMPLE_JAVA_TARGETS=()
@@ -55,8 +54,7 @@ if [[ -n "${KOKORO_ROOT:-}" ]]; then
 fi
 readonly MANUAL_EXAMPLE_JAVA_TARGETS
 
-./kokoro/testutils/run_bazel_tests.sh \
-  "examples" \
+./kokoro/testutils/run_bazel_tests.sh "examples" \
   "${MANUAL_EXAMPLE_JAVA_TARGETS[@]}"
 
 mv "examples/WORKSPACE.bak" "examples/WORKSPACE"

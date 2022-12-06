@@ -16,15 +16,15 @@
 
 set -euo pipefail
 
-export XCODE_VERSION=11.3
+export XCODE_VERSION=14
 export DEVELOPER_DIR="/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
-export ANDROID_HOME="/Users/kbuilder/Library/Android/sdk"
+export ANDROID_HOME="/usr/local/share/android-sdk"
 export COURSIER_OPTS="-Djava.net.preferIPv6Addresses=true"
 
 if [[ -n "${KOKORO_ROOT:-}" ]] ; then
   TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
   cd "${TINK_BASE_DIR}/tink_java_gcpkms"
-  use_bazel.sh "$(cat .bazelversion)"
+  export JAVA_HOME=$(/usr/libexec/java_home -v "1.8.0_292")
 fi
 
 : "${TINK_BASE_DIR:=$(cd .. && pwd)}"
@@ -38,8 +38,7 @@ readonly GITHUB_ORG="https://github.com/tink-crypto"
 ./kokoro/testutils/copy_credentials.sh "testdata" "gcp"
 ./kokoro/testutils/update_android_sdk.sh
 ./kokoro/testutils/replace_http_archive_with_local_repository.py \
-  -f "WORKSPACE" \
-  -t "${TINK_BASE_DIR}"
+  -f "WORKSPACE" -t "${TINK_BASE_DIR}"
 
 # Run manual tests which rely on key material injected into the Kokoro
 # environement.
