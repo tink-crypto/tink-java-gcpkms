@@ -16,7 +16,13 @@
 
 set -euo pipefail
 
+IS_KOKORO="false"
 if [[ -n "${KOKORO_ARTIFACTS_DIR:-}" ]] ; then
+  IS_KOKORO="true"
+fi
+readonly IS_KOKORO
+
+if [[ "${IS_KOKORO}" == "true" ]] ; then
   TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
   cd "${TINK_BASE_DIR}/tink_java_gcpkms"
 fi
@@ -30,7 +36,7 @@ readonly GITHUB_ORG="https://github.com/tink-crypto"
   "${GITHUB_ORG}/tink-java"
 
 ./kokoro/testutils/replace_http_archive_with_local_repository.py \
-  -f "WORKSPACE"  -t "${TINK_BASE_DIR}"
+  -f "WORKSPACE" -t "${TINK_BASE_DIR}"
 ./kokoro/testutils/copy_credentials.sh "testdata" "gcp"
 
 # Install the latest snapshots locally.
@@ -48,5 +54,15 @@ readonly MASTER_KEY_URI="gcp-kms://projects/tink-test-infrastructure/locations/g
 # Run the local test Maven example.
 mvn package --no-snapshot-updates -f examples/maven/pom.xml
 mvn exec:java --no-snapshot-updates -f examples/maven/pom.xml \
-  -Dexec.args="keyset.json ${CREDENTIALS_FILE_PATH} ${MASTER_KEY_URI}" \
-  && echo "OK!"
+  -Dexec.args="keyset.json ${CREDENTIALS_FILE_PATH} ${MASTER_KEY_URI}"
+
+readonly GITHUB_JOB_NAME="tink/github/java_gcpkms/gcp_ubuntu/maven/continuous"
+
+if [[ "${IS_KOKORO}" == "true" \
+      && "${KOKORO_JOB_NAME}" == "${GITHUB_JOB_NAME}" ]]; then
+  # GITHUB_ACCESS_TOKEN is populated by Kokoro.
+  readonly GIT_CREDENTIALS="ise-crypto:${GITHUB_ACCESS_TOKEN}"
+  readonly GITHUB_URL="https://${GIT_CREDENTIALS}@github.com/tink-crypto/tink-java-gcpkms.git"
+  ./maven/maven_deploy_library.sh -u "${GITHUB_URL}" snapshot tink \
+    maven/tink-java-gcpkms.pom.xml HEAD
+fi
