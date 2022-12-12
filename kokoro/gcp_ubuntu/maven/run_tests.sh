@@ -63,6 +63,6 @@ if [[ "${IS_KOKORO}" == "true" \
   # GITHUB_ACCESS_TOKEN is populated by Kokoro.
   readonly GIT_CREDENTIALS="ise-crypto:${GITHUB_ACCESS_TOKEN}"
   readonly GITHUB_URL="https://${GIT_CREDENTIALS}@github.com/tink-crypto/tink-java-gcpkms.git"
-  ./maven/maven_deploy_library.sh -u "${GITHUB_URL}" snapshot tink \
+  ./maven/maven_deploy_library.sh -u "${GITHUB_URL}" snapshot tink-gcpkms \
     maven/tink-java-gcpkms.pom.xml HEAD
 fi
