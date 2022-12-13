@@ -44,9 +44,10 @@ fi
 
 GITHUB_RELEASE_OPTS=()
 if [[ "${IS_KOKORO}" == "true" ]] ; then
-  # Note: KOKORO_GIT_COMMIT and GITHUB_ACCESS_TOKEN are populated by Kokoro.
+  # Note: KOKORO_GIT_COMMIT_tink_java_gcpkms and GITHUB_ACCESS_TOKEN are
+  # populated by Kokoro.
   GITHUB_RELEASE_OPTS+=(
-    -c "${KOKORO_GIT_COMMIT}"
+    -c "${KOKORO_GIT_COMMIT_tink_java_gcpkms}"
     -t "${GITHUB_ACCESS_TOKEN}"
   )
   readonly TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
