@@ -45,6 +45,11 @@ readonly GITHUB_ORG="https://github.com/tink-crypto"
   ./maven/maven_deploy_library.sh install tink \
     maven/tink-java.pom.xml HEAD
 )
+
+# Build tink-java-gcpkms against tink-java at HEAD-SNAPSHOT.
+mvn versions:set-property -Dproperty=tink.version -DnewVersion=HEAD-SNAPSHOT \
+  --file maven/tink-java-gcpkms.pom.xml
+
 ./maven/maven_deploy_library.sh install tink-gcpkms \
   maven/tink-java-gcpkms.pom.xml HEAD
 
