@@ -6,6 +6,6 @@ TINK_JAVA_GCPKMS_MAVEN_ARTIFACTS = [
     "com.google.auth:google-auth-library-oauth2-http:1.5.3",
     "com.google.http-client:google-http-client:1.42.3",
     "com.google.http-client:google-http-client-gson:1.42.3",
-    "com.google.oauth-client:google-oauth-client:1.30.1",
+    "com.google.oauth-client:google-oauth-client:1.34.1",
     "com.fasterxml.jackson.core:jackson-core:2.13.1",
 ]
