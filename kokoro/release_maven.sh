@@ -37,8 +37,6 @@ if [[ ! "${DO_MAKE_RELEASE}" =~ ^(false|true)$ ]]; then
   exit 1
 fi
 
-########### Create a Maven release on Sonatype. ###########
-
 GITUB_PROTOCOL_AND_AUTH="ssh://git"
 if [[ "${IS_KOKORO}" == "true" ]] ; then
   readonly TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
@@ -55,6 +53,17 @@ if [[ "${DO_MAKE_RELEASE}" == "false" ]]; then
   MAVEN_DEPLOY_LIBRARY_OPTIONS+=( -d )
 fi
 readonly MAVEN_DEPLOY_LIBRARY_OPTIONS
+
+if [[ "${IS_KOKORO}" == "true" ]]; then
+  # Import the PGP signing key and make the passphrase available as an env
+  # variable.
+  gpg --import --pinentry-mode loopback \
+    --passphrase-file \
+    "${KOKORO_KEYSTORE_DIR}/70968_tink_dev_maven_pgp_passphrase" \
+    --batch "${KOKORO_KEYSTORE_DIR}/70968_tink_dev_maven_pgp_secret_key"
+  export TINK_DEV_MAVEN_PGP_PASSPHRASE="$(cat \
+    "${KOKORO_KEYSTORE_DIR}/70968_tink_dev_maven_pgp_passphrase")"
+fi
 
 ./maven/maven_deploy_library.sh "${MAVEN_DEPLOY_LIBRARY_OPTIONS[@]}" release \
   tink-gcpkms maven/tink-java-gcpkms.pom.xml "${RELEASE_VERSION}"
