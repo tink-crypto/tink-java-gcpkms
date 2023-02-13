@@ -61,7 +61,7 @@ public final class GcpKmsClient implements KmsClient {
    *
    * @deprecated use {@link #register}
    */
-  @Deprecated
+  @Deprecated /* TODO(b/245696196): check deprecation */
   public GcpKmsClient() {}
 
   /**
@@ -69,7 +69,7 @@ public final class GcpKmsClient implements KmsClient {
    *
    * @deprecated use {@link #register}
    */
-  @Deprecated
+  @Deprecated /* TODO(b/245696196): check deprecation */
   public GcpKmsClient(String uri) {
     if (!uri.toLowerCase(Locale.US).startsWith(PREFIX)) {
       throw new IllegalArgumentException("key URI must starts with " + PREFIX);
