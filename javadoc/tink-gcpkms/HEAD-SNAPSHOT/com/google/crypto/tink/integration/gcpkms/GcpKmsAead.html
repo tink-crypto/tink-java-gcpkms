@@ -141,7 +141,7 @@ implements com.google.crypto.tink.Aead</pre>
 </tr>
 <tr class="altColor">
 <td class="colOne"><code><span class="memberNameLink"><a href="../../../../../../com/google/crypto/tink/integration/gcpkms/GcpKmsAead.html#GcpKmsAead-com.google.api.services.cloudkms.v1.CloudKMS-java.lang.String-">GcpKmsAead</a></span>(com.google.api.services.cloudkms.v1.CloudKMS&nbsp;kmsClient,
-          <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;keyUri)</code>&nbsp;</td>
+          <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;keyName)</code>&nbsp;</td>
 </tr>
 </table>
 </li>
@@ -161,12 +161,12 @@ implements com.google.crypto.tink.Aead</pre>
 <tr id="i0" class="altColor">
 <td class="colFirst"><code>byte[]</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../../../com/google/crypto/tink/integration/gcpkms/GcpKmsAead.html#decrypt-byte:A-byte:A-">decrypt</a></span>(byte[]&nbsp;ciphertext,
-       byte[]&nbsp;aad)</code>&nbsp;</td>
+       byte[]&nbsp;associatedData)</code>&nbsp;</td>
 </tr>
 <tr id="i1" class="rowColor">
 <td class="colFirst"><code>byte[]</code></td>
 <td class="colLast"><code><span class="memberNameLink"><a href="../../../../../../com/google/crypto/tink/integration/gcpkms/GcpKmsAead.html#encrypt-byte:A-byte:A-">encrypt</a></span>(byte[]&nbsp;plaintext,
-       byte[]&nbsp;aad)</code>&nbsp;</td>
+       byte[]&nbsp;associatedData)</code>&nbsp;</td>
 </tr>
 </table>
 <ul class="blockList">
@@ -197,12 +197,7 @@ implements com.google.crypto.tink.Aead</pre>
 <li class="blockList">
 <h4>GcpKmsAead</h4>
 <pre>public&nbsp;GcpKmsAead(com.google.api.services.cloudkms.v1.CloudKMS&nbsp;kmsClient,
-                  <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;keyUri)
-           throws <a href="https://docs.oracle.com/javase/8/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></pre>
-<dl>
-<dt><span class="throwsLabel">Throws:</span></dt>
-<dd><code><a href="https://docs.oracle.com/javase/8/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></code></dd>
-</dl>
+                  <a href="https://docs.oracle.com/javase/8/docs/api/java/lang/String.html?is-external=true" title="class or interface in java.lang">String</a>&nbsp;keyName)</pre>
 </li>
 </ul>
 </li>
@@ -220,7 +215,7 @@ implements com.google.crypto.tink.Aead</pre>
 <li class="blockList">
 <h4>encrypt</h4>
 <pre>public&nbsp;byte[]&nbsp;encrypt(byte[]&nbsp;plaintext,
-                      byte[]&nbsp;aad)
+                      byte[]&nbsp;associatedData)
                throws <a href="https://docs.oracle.com/javase/8/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
@@ -237,7 +232,7 @@ implements com.google.crypto.tink.Aead</pre>
 <li class="blockList">
 <h4>decrypt</h4>
 <pre>public&nbsp;byte[]&nbsp;decrypt(byte[]&nbsp;ciphertext,
-                      byte[]&nbsp;aad)
+                      byte[]&nbsp;associatedData)
                throws <a href="https://docs.oracle.com/javase/8/docs/api/java/security/GeneralSecurityException.html?is-external=true" title="class or interface in java.security">GeneralSecurityException</a></pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
