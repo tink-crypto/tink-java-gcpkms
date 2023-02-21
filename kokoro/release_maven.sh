@@ -39,12 +39,16 @@ fi
 
 GITUB_PROTOCOL_AND_AUTH="ssh://git"
 if [[ "${IS_KOKORO}" == "true" ]] ; then
-  readonly TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
+  TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
   cd "${TINK_BASE_DIR}/tink_java_gcpkms"
   # GITHUB_ACCESS_TOKEN is populated by Kokoro.
   GITUB_PROTOCOL_AND_AUTH="https://ise-crypto:${GITHUB_ACCESS_TOKEN}"
 fi
 readonly GITUB_PROTOCOL_AND_AUTH
+
+: "${TINK_BASE_DIR:=$(cd .. && pwd)}"
+readonly TINK_BASE_DIR
+
 readonly TINK_JAVA_GCPKMS_GITHUB_URL="github.com/tink-crypto/tink-java-gcpkms"
 readonly GITHUB_URL="${GITUB_PROTOCOL_AND_AUTH}@${TINK_JAVA_GCPKMS_GITHUB_URL}"
 
@@ -65,5 +69,13 @@ if [[ "${IS_KOKORO}" == "true" ]]; then
     "${KOKORO_KEYSTORE_DIR}/70968_tink_dev_maven_pgp_passphrase")"
 fi
 
+# Check for dependencies in TINK_BASE_DIR. Any that aren't present will be
+# downloaded. This is for manual runs only, on Kokoro this is a noop.
+./kokoro/testutils/fetch_git_repo_if_not_present.sh "${TINK_BASE_DIR}" \
+  "https://github.com/tink-crypto/tink-java"
+# Use tink-java that is made available by Kokoro or the one fetched above if
+# running locally.
+./kokoro/testutils/replace_http_archive_with_local_repository.py \
+  -f "WORKSPACE" -t "${TINK_BASE_DIR}"
 ./maven/maven_deploy_library.sh "${MAVEN_DEPLOY_LIBRARY_OPTIONS[@]}" release \
   tink-gcpkms maven/tink-java-gcpkms.pom.xml "${RELEASE_VERSION}"
