@@ -48,6 +48,8 @@ if [[ "${IS_KOKORO}" == "true" ]] ; then
     -c "${KOKORO_GIT_COMMIT_tink_java_gcpkms}"
     -t "${GITHUB_ACCESS_TOKEN}"
   )
+  readonly TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
+  cd "${TINK_BASE_DIR}/tink_java_gcpkms"
 fi
 if [[ "${DO_MAKE_RELEASE}" == "true" ]]; then
   GITHUB_RELEASE_UTIL_OPTS+=( -r )
