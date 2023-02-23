@@ -3,6 +3,7 @@
 <!-- GCP Ubuntu --->
 
 [tink_java_gcpkms_bazel_badge_gcp_ubuntu]: https://storage.googleapis.com/tink-kokoro-build-badges/tink-java-gcpkms-bazel-gcp-ubuntu.svg
+[tink_java_gcpkms_maven_badge_gcp_ubuntu]: https://storage.googleapis.com/tink-kokoro-build-badges/tink-java-gcpkms-maven-gcp-ubuntu.svg
 [tink_java_gcpkms_bazel_examples_badge_gcp_ubuntu]: https://storage.googleapis.com/tink-kokoro-build-badges/tink-java-gcpkms-bazel-examples-gcp-ubuntu.svg
 
 <!-- MacOS --->
@@ -13,6 +14,7 @@
 **Test**         | **GCP Ubuntu**                                                               | **MacOS**
 ---------------- | ---------------------------------------------------------------------------- | ---------
 Tink (Bazel)     | [![Bazel_GcpUbuntu][tink_java_gcpkms_bazel_badge_gcp_ubuntu]](#)             | [![Bazel_MacOs][tink_java_gcpkms_bazel_badge_macos]](#)
+Tink (Maven)     | [![Maven_GcpUbuntu][tink_java_gcpkms_maven_badge_gcp_ubuntu]](#)             | N/A
 Examples (Bazel) | [![Examples_GcpUbuntu][tink_java_gcpkms_bazel_examples_badge_gcp_ubuntu]](#) | [![Examples_MacOs][tink_java_gcpkms_bazel_examples_badge_macos]](#)
 
 This is an extension to the
