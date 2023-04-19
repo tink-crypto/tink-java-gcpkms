@@ -37,10 +37,9 @@ readonly GITHUB_ORG="https://github.com/tink-crypto"
 
 ./kokoro/testutils/replace_http_archive_with_local_repository.py \
   -f "WORKSPACE" -t "${TINK_BASE_DIR}"
-# Ignore the dependency of tink-java since with Bazel this is not a Maven
-# dependency.
+# Ignore com.google.crypto.tink:tink; this is a Bazel dependency, not a Maven one.
 ./kokoro/testutils/check_maven_bazel_deps_consistency.sh \
-  -e "com.google.crypto.tink" "//:tink-gcpkms" "maven/tink-java-gcpkms.pom.xml"
+  -e "com.google.crypto.tink:tink" "//:tink-gcpkms" "maven/tink-java-gcpkms.pom.xml"
 ./kokoro/testutils/copy_credentials.sh "testdata" "gcp"
 
 # Install the latest snapshots locally.
