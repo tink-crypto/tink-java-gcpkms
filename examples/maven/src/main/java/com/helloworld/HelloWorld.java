@@ -18,11 +18,11 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.JsonKeysetReader;
-import com.google.crypto.tink.KeyTemplates;
 import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.KmsClients;
 import com.google.crypto.tink.TinkJsonProtoKeysetFormat;
 import com.google.crypto.tink.aead.AeadConfig;
+import com.google.crypto.tink.aead.PredefinedAeadParameters;
 import com.google.crypto.tink.integration.gcpkms.GcpKmsClient;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -55,7 +55,7 @@ public final class HelloWorld {
     if (keyset.exists()) {
       return KeysetHandle.read(JsonKeysetReader.withFile(keyset), masterKeyAead);
     }
-    KeysetHandle handle = KeysetHandle.generateNew(KeyTemplates.get("AES128_GCM"));
+    KeysetHandle handle = KeysetHandle.generateNew(PredefinedAeadParameters.AES128_GCM);
     String serializedEncryptedKeyset =
         TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(handle, masterKeyAead, new byte[0]);
     try (FileOutputStream outputStream = new FileOutputStream(keyset)) {
