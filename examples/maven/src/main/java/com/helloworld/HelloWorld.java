@@ -17,16 +17,16 @@ package com.helloworld;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.crypto.tink.Aead;
-import com.google.crypto.tink.JsonKeysetReader;
 import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.KmsClients;
 import com.google.crypto.tink.TinkJsonProtoKeysetFormat;
 import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.aead.PredefinedAeadParameters;
 import com.google.crypto.tink.integration.gcpkms.GcpKmsClient;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.GeneralSecurityException;
 import java.util.Arrays;
 import java.util.Optional;
@@ -49,32 +49,31 @@ public final class HelloWorld {
   }
 
   /** Loads a KeysetHandle from {@code keyset} or generate a new one if it doesn't exist. */
-  private static KeysetHandle getKeysetHandle(File keyset, String masterKeyUri)
+  private static KeysetHandle getKeysetHandle(Path keysetPath, String masterKeyUri)
       throws GeneralSecurityException, IOException {
     Aead masterKeyAead = KmsClients.get(masterKeyUri).getAead(masterKeyUri);
-    if (keyset.exists()) {
-      return KeysetHandle.read(JsonKeysetReader.withFile(keyset), masterKeyAead);
+    if (Files.exists(keysetPath)) {
+      return TinkJsonProtoKeysetFormat.parseEncryptedKeyset(
+          new String(Files.readAllBytes(keysetPath), UTF_8), masterKeyAead, new byte[0]);
     }
     KeysetHandle handle = KeysetHandle.generateNew(PredefinedAeadParameters.AES128_GCM);
     String serializedEncryptedKeyset =
         TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(handle, masterKeyAead, new byte[0]);
-    try (FileOutputStream outputStream = new FileOutputStream(keyset)) {
-      outputStream.write(serializedEncryptedKeyset.getBytes(UTF_8));
-    }
+    Files.write(keysetPath, serializedEncryptedKeyset.getBytes(UTF_8));
     return handle;
   }
 
-  private static byte[] encrypt(File keyset, String masterKeyUri, byte[] plaintext)
+  private static byte[] encrypt(Path keyset, String masterKeyUri, byte[] plaintext)
       throws Exception {
-    KeysetHandle keysetHanlde = getKeysetHandle(keyset, masterKeyUri);
-    Aead aead = keysetHanlde.getPrimitive(Aead.class);
+    KeysetHandle keysetHandle = getKeysetHandle(keyset, masterKeyUri);
+    Aead aead = keysetHandle.getPrimitive(Aead.class);
     return aead.encrypt(plaintext, associatedData);
   }
 
-  private static byte[] decrypt(File keyset, String masterKeyUri, byte[] ciphertext)
+  private static byte[] decrypt(Path keyset, String masterKeyUri, byte[] ciphertext)
       throws Exception {
-    KeysetHandle keysetHanlde = getKeysetHandle(keyset, masterKeyUri);
-    Aead aead = keysetHanlde.getPrimitive(Aead.class);
+    KeysetHandle keysetHandle = getKeysetHandle(keyset, masterKeyUri);
+    Aead aead = keysetHandle.getPrimitive(Aead.class);
     return aead.decrypt(ciphertext, associatedData);
   }
 
@@ -84,13 +83,13 @@ public final class HelloWorld {
       System.exit(1);
     }
 
-    File keysetFile = new File(args[0]);
-    File credentialsPath = new File(args[1]);
+    Path keysetFile = Paths.get(args[0]);
+    Path credentialsPath = Paths.get(args[1]);
     String masterKeyUri = args[2];
 
     // Register all AEAD key types with the Tink runtime.
     AeadConfig.register();
-    GcpKmsClient.register(Optional.of(masterKeyUri), Optional.of(credentialsPath.getPath()));
+    GcpKmsClient.register(Optional.of(masterKeyUri), Optional.of(credentialsPath.toString()));
 
     byte[] ciphertext = encrypt(keysetFile, masterKeyUri, plaintext);
     byte[] decrypted = decrypt(keysetFile, masterKeyUri, ciphertext);
