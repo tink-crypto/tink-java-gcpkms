@@ -21,31 +21,6 @@ TINK_BASE_DIR=
 BAZEL_CMD="bazel"
 
 #######################################
-# Prints and error message with the missing deps for the given target diff-ing
-# the expected and actual list of targets.
-#
-# Globals:
-#   None
-# Arguments:
-#   target: Bazel target.
-#   expected_deps: Expected list of dependencies.
-#   actual_deps: Actual list of dependencies.
-# Outputs:
-#   Writes to stdout
-#######################################
-print_missing_deps() {
-  local -r target="$1"
-  local -r expected_deps="$2"
-  local -r actual_deps="$3"
-
-  echo "#========= ERROR ${target} target:"
-  echo "The following dependencies are missing from the ${target} target:"
-  diff --changed-group-format='%>' --unchanged-group-format='' \
-    "${actual_deps}" "${expected_deps}"
-  echo "#==============================="
-}
-
-#######################################
 # Checks if the //:tink-gcpkms has all the required dependencies.
 #
 # Globals:
@@ -56,29 +31,15 @@ print_missing_deps() {
 #   Writes to stdout
 #######################################
 test_build_bazel_file() {
-  local -r tink_java_prefix="//src/main/java/com/google/crypto/tink"
-  local -r tink_java_integration_gcpkms_prefix="${tink_java_prefix}/integration/gcpkms"
-
-  # Targets in tink_java_integration_gcpkms_prefix of type java_library,
-  # excluding testonly targets.
-  local -r expected_gcpkms_deps="$(mktemp)"
-  "${BAZEL_CMD}" query "\
-kind(java_library,${tink_java_integration_gcpkms_prefix}/...) \
-except attr(testonly,1,${tink_java_integration_gcpkms_prefix}/...)" \
-    > "${expected_gcpkms_deps}"
-
-  # Dependencies of //:tink-gcpkms of type java_library that are in
-  # tink_java_integration_gcpkms_prefix.
-  # Note: Considering only direct dependencies of the target.
-  local -r actual_gcpkms_targets="$(mktemp)"
-  "${BAZEL_CMD}" query "filter(\
-${tink_java_integration_gcpkms_prefix},\
-kind(java_library,deps(//:tink-gcpkms,1)))" \
-    > "${actual_gcpkms_targets}"
-
-  if ! cmp -s "${actual_gcpkms_targets}" "${expected_gcpkms_deps}"; then
-    print_missing_deps "//:tink-gcpkms" "${expected_gcpkms_deps}" \
-      "${actual_gcpkms_targets}"
+  ./tools/create_maven_build_file.sh -o BUILD.bazel.temp
+  if ! cmp -s BUILD.bazel BUILD.bazel.temp; then
+    echo "ERROR: Update your BUILD.bazel file using \
+./tools/create_maven_build_file.sh or applying:" >&2
+    cat <<EOF
+patch BUILD.bazel<<PATCH
+$(diff BUILD.bazel BUILD.bazel.temp)
+PATCH
+EOF
     exit 1
   fi
 }
