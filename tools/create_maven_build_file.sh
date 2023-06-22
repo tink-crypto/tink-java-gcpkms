@@ -73,6 +73,7 @@ $(cat "${deps}" | sed 's/^/        "/' | sed 's/$/",/')
     ],
 )
 EOF
+  buildifier "${OUT_FILE}"
 }
 
 readonly TINK_JAVA_PREFIX="//src/main/java/com/google/crypto/tink"
