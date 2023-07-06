@@ -33,7 +33,7 @@ RUN_COMMAND_ARGS=()
 if [[ -n "${KOKORO_ARTIFACTS_DIR:-}" ]] ; then
   TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
   source \
-    "${TINK_BASE_DIR}/tink_java_gcpkms/kokoro/testutils/tink_test_container_images.sh"
+    "${TINK_BASE_DIR}/tink_java_gcpkms/kokoro/testutils/java_test_container_images.sh"
   CONTAINER_IMAGE="${TINK_JAVA_BASE_IMAGE}"
   RUN_COMMAND_ARGS+=( -k "${TINK_GCR_SERVICE_KEY}" )
 fi
