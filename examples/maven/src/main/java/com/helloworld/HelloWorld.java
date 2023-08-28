@@ -48,33 +48,21 @@ public final class HelloWorld {
             + "-Dexec.args=\"<keyset file> <credentials path> <keyset encryption key uri>\"");
   }
 
-  /** Loads a KeysetHandle from {@code keyset} or generate a new one if it doesn't exist. */
-  private static KeysetHandle getKeysetHandle(Path keysetPath, Aead keysetEncryptionAead)
+  /** Creates a new keyset with one AEAD key, and write it encrypted to disk. */
+  private static void createAndWriteEncryptedKeyset(Path keysetPath, Aead keysetEncryptionAead)
       throws GeneralSecurityException, IOException {
-    if (Files.exists(keysetPath)) {
-      return TinkJsonProtoKeysetFormat.parseEncryptedKeyset(
-          new String(Files.readAllBytes(keysetPath), UTF_8), keysetEncryptionAead, new byte[0]);
-    }
     KeysetHandle handle = KeysetHandle.generateNew(PredefinedAeadParameters.AES128_GCM);
     String serializedEncryptedKeyset =
         TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
             handle, keysetEncryptionAead, new byte[0]);
     Files.write(keysetPath, serializedEncryptedKeyset.getBytes(UTF_8));
-    return handle;
   }
 
-  private static byte[] encrypt(Path keyset, Aead keysetEncryptionAead, byte[] plaintext)
-      throws Exception {
-    KeysetHandle keysetHandle = getKeysetHandle(keyset, keysetEncryptionAead);
-    Aead aead = keysetHandle.getPrimitive(Aead.class);
-    return aead.encrypt(plaintext, associatedData);
-  }
-
-  private static byte[] decrypt(Path keyset, Aead keysetEncryptionAead, byte[] ciphertext)
-      throws Exception {
-    KeysetHandle keysetHandle = getKeysetHandle(keyset, keysetEncryptionAead);
-    Aead aead = keysetHandle.getPrimitive(Aead.class);
-    return aead.decrypt(ciphertext, associatedData);
+  /** Reads an encrypted keyset from disk. */
+  private static KeysetHandle readEncryptedKeyset(Path keysetPath, Aead keysetEncryptionAead)
+      throws GeneralSecurityException, IOException {
+    return TinkJsonProtoKeysetFormat.parseEncryptedKeyset(
+        new String(Files.readAllBytes(keysetPath), UTF_8), keysetEncryptionAead, new byte[0]);
   }
 
   public static void main(String[] args) throws Exception {
@@ -83,7 +71,7 @@ public final class HelloWorld {
       System.exit(1);
     }
 
-    Path keysetFile = Paths.get(args[0]);
+    Path keysetPath = Paths.get(args[0]);
     Path credentialsPath = Paths.get(args[1]);
     String keysetEncryptionKeyUri = args[2];
 
@@ -92,9 +80,18 @@ public final class HelloWorld {
     KmsClient kmsClient = new GcpKmsClient().withCredentials(credentialsPath.toString());
     Aead keysetEncryptionAead = kmsClient.getAead(keysetEncryptionKeyUri);
 
-    byte[] ciphertext = encrypt(keysetFile, keysetEncryptionAead, plaintext);
-    byte[] decrypted = decrypt(keysetFile, keysetEncryptionAead, ciphertext);
+    if (Files.exists(keysetPath)) {
+      System.out.println("keyset file already exists");
+      System.exit(1);
+    }
 
+    createAndWriteEncryptedKeyset(keysetPath, keysetEncryptionAead);
+
+    KeysetHandle keysetHandle = readEncryptedKeyset(keysetPath, keysetEncryptionAead);
+    Aead aead = keysetHandle.getPrimitive(Aead.class);
+
+    byte[] ciphertext = aead.encrypt(plaintext, associatedData);
+    byte[] decrypted = aead.decrypt(ciphertext, associatedData);
     if (!Arrays.equals(decrypted, plaintext)) {
       System.out.println("Decryption failed");
       System.exit(1);
