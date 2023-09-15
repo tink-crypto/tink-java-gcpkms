@@ -67,7 +67,7 @@
 <!--   -->
 </a></div>
 <!-- ========= END OF TOP NAVBAR ========= -->
-<div class="contentContainer"><a href="#I:C">C</a>&nbsp;<a href="#I:D">D</a>&nbsp;<a href="#I:E">E</a>&nbsp;<a href="#I:G">G</a>&nbsp;<a href="#I:P">P</a>&nbsp;<a href="#I:W">W</a>&nbsp;<a name="I:C">
+<div class="contentContainer"><a href="#I:C">C</a>&nbsp;<a href="#I:D">D</a>&nbsp;<a href="#I:E">E</a>&nbsp;<a href="#I:G">G</a>&nbsp;<a href="#I:P">P</a>&nbsp;<a href="#I:R">R</a>&nbsp;<a href="#I:W">W</a>&nbsp;<a name="I:C">
 <!--   -->
 </a>
 <h2 class="title">C</h2>
@@ -134,6 +134,21 @@
 <div class="block">The prefix of all keys stored in Google Cloud KMS.</div>
 </dd>
 </dl>
+<a name="I:R">
+<!--   -->
+</a>
+<h2 class="title">R</h2>
+<dl>
+<dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsClient.html#register-java.util.Optional-java.util.Optional-">register(Optional&lt;String&gt;, Optional&lt;String&gt;)</a></span> - Static method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsClient.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsClient</a></dt>
+<dd>
+<div class="block"><span class="deprecatedLabel">Deprecated.</span>
+<div class="block"><span class="deprecationComment">It is preferable to not register KMS clients. Instead, create the GcpKmsClient
+     yourself and call <code>getAead</code> to get a remote <code>Aead</code>. Use this <code>Aead</code> to
+     encrypt a keyset with <code>TinkProtoKeysetFormat.serializeEncryptedKeyset</code>, or to create
+     an envelope <code>Aead</code> using <code>KmsEnvelopeAead.create</code>.</span></div>
+</div>
+</dd>
+</dl>
 <a name="I:W">
 <!--   -->
 </a>
@@ -157,7 +172,7 @@
  default Google Cloud credentials</a>.</div>
 </dd>
 </dl>
-<a href="#I:C">C</a>&nbsp;<a href="#I:D">D</a>&nbsp;<a href="#I:E">E</a>&nbsp;<a href="#I:G">G</a>&nbsp;<a href="#I:P">P</a>&nbsp;<a href="#I:W">W</a>&nbsp;</div>
+<a href="#I:C">C</a>&nbsp;<a href="#I:D">D</a>&nbsp;<a href="#I:E">E</a>&nbsp;<a href="#I:G">G</a>&nbsp;<a href="#I:P">P</a>&nbsp;<a href="#I:R">R</a>&nbsp;<a href="#I:W">W</a>&nbsp;</div>
 <!-- ======= START OF BOTTOM NAVBAR ====== -->
 <div class="bottomNav"><a name="navbar.bottom">
 <!--   -->
