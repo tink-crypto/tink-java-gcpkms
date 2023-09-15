@@ -193,7 +193,7 @@ public final class GcpKmsClient implements KmsClient {
    *     an envelope {@code Aead} using {@code KmsEnvelopeAead.create}.
    */
   @Deprecated
-  /* OSS: public */ static void register(Optional<String> keyUri, Optional<String> credentialPath)
+  public static void register(Optional<String> keyUri, Optional<String> credentialPath)
       throws GeneralSecurityException {
     GcpKmsClient client;
     if (keyUri.isPresent()) {
