@@ -31,22 +31,17 @@ readonly GITHUB_ORG="https://github.com/tink-crypto"
 
 RUN_COMMAND_ARGS=()
 if [[ -n "${KOKORO_ARTIFACTS_DIR:-}" ]] ; then
-  TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
-  source \
-    "${TINK_BASE_DIR}/tink_java_gcpkms/kokoro/testutils/java_test_container_images.sh"
+  readonly TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
+  cd "${TINK_BASE_DIR}/tink_java_gcpkms"
+  source ./kokoro/testutils/java_test_container_images.sh
   CONTAINER_IMAGE="${TINK_JAVA_BASE_IMAGE}"
   RUN_COMMAND_ARGS+=( -k "${TINK_GCR_SERVICE_KEY}" )
 fi
-: "${TINK_BASE_DIR:=$(cd .. && pwd)}"
-readonly TINK_BASE_DIR
 readonly CONTAINER_IMAGE
 
 if [[ -n "${CONTAINER_IMAGE:-}" ]]; then
   RUN_COMMAND_ARGS+=( -c "${CONTAINER_IMAGE}" )
 fi
-readonly RUN_COMMAND_ARGS
-
-cd "${TINK_BASE_DIR}/tink_java_gcpkms"
 
 # Check for dependencies in TINK_BASE_DIR. Any that aren't present will be
 # downloaded.
@@ -54,6 +49,7 @@ cd "${TINK_BASE_DIR}/tink_java_gcpkms"
   "${GITHUB_ORG}/tink-java"
 
 ./kokoro/testutils/copy_credentials.sh "testdata" "gcp"
+./kokoro/testutils/copy_credentials.sh "examples/testdata" "gcp"
 
 cp WORKSPACE WORKSPACE.bak
 ./kokoro/testutils/replace_http_archive_with_local_repository.py \
@@ -64,14 +60,34 @@ set -euo pipefail
 
 ./tools/create_maven_build_file.sh -o BUILD.bazel.temp
 if ! cmp -s BUILD.bazel BUILD.bazel.temp; then
-  echo "ERROR: Update your BUILD.bazel file using ./tools/create_maven_build_file.sh or applying:" >&2
+  echo -n "ERROR: Update your BUILD.bazel file using" >&2
+  echo " ./tools/create_maven_build_file.sh or applying:"
   echo "patch BUILD.bazel<<PATCH"
   echo "$(diff BUILD.bazel BUILD.bazel.temp)"
   echo "PATCH"
 EOP
   exit 1
 fi
-./kokoro/testutils/run_bazel_tests.sh .
+MANUAL_TARGETS=()
+if [[ -n "${KOKORO_ROOT:-}" ]]; then
+  MANUAL_TARGETS+=(
+    "//src/test/java/com/google/crypto/tink/integration/gcpkms:GcpKmsIntegrationTest"
+  )
+fi
+readonly MANUAL_TARGETS
+./kokoro/testutils/run_bazel_tests.sh . "${MANUAL_TARGETS[@]}"
+
+# Targets tagged as "manual" that require setting GCP credentials.
+EXAMPLES_MANUAL_TARGETS=()
+if [[ -n "${KOKORO_ROOT:-}" ]]; then
+  EXAMPLES_MANUAL_TARGETS=(
+    "//gcs:gcs_envelope_aead_example_test"
+    "//encryptedkeyset:encrypted_keyset_example_test"
+    "//envelopeaead:envelope_aead_example_test"
+  )
+fi
+readonly EXAMPLES_MANUAL_TARGETS
+./kokoro/testutils/run_bazel_tests.sh "examples" "${EXAMPLES_MANUAL_TARGETS[@]}"
 EOF
 chmod +x _do_run_test.sh
 
@@ -83,5 +99,12 @@ cleanup() {
   rm -rf BUILD.bazel.temp
   mv WORKSPACE.bak WORKSPACE
 }
+
+# Share the required Kokoro env variables.
+cat <<EOF > env_variables.txt
+KOKORO_ROOT
+EOF
+RUN_COMMAND_ARGS+=( -e env_variables.txt )
+readonly RUN_COMMAND_ARGS
 
 ./kokoro/testutils/run_command.sh "${RUN_COMMAND_ARGS[@]}" ./_do_run_test.sh
