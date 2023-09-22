@@ -36,11 +36,6 @@
   <dependencies>
     <dependency>
       <groupId>com.google.crypto.tink</groupId>
-      <artifactId>tink</artifactId>
-      <version>HEAD-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>com.google.crypto.tink</groupId>
       <artifactId>tink-gcpkms</artifactId>
       <version>HEAD-SNAPSHOT</version>
     </dependency>

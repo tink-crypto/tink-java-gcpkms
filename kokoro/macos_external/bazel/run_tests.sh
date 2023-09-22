@@ -27,17 +27,9 @@ if [[ -n "${KOKORO_ROOT:-}" ]] ; then
   export JAVA_HOME=$(/usr/libexec/java_home -v "1.8.0_292")
 fi
 
-# Check for dependencies in TINK_BASE_DIR. Any that aren't present will be
-# downloaded.
-readonly GITHUB_ORG="https://github.com/tink-crypto"
-./kokoro/testutils/fetch_git_repo_if_not_present.sh "${TINK_BASE_DIR}" \
-  "${GITHUB_ORG}/tink-java"
-
 ./kokoro/testutils/copy_credentials.sh "testdata" "gcp"
 ./kokoro/testutils/copy_credentials.sh "examples/testdata" "gcp"
 ./kokoro/testutils/update_android_sdk.sh
-./kokoro/testutils/replace_http_archive_with_local_repository.py \
-  -f "WORKSPACE" -t "${TINK_BASE_DIR}"
 
 # Run manual tests which rely on key material injected into the Kokoro
 # environement.

@@ -14,20 +14,18 @@
 # limitations under the License.
 ################################################################################
 
-# By default when run locally this script runs the command below directly on the
-# host. The CONTAINER_IMAGE variable can be set to run on a custom container
-# image for local testing. E.g.:
+# Builds and tests tink-java-gcpkms using Bazel.
 #
-# CONTAINER_IMAGE="us-docker.pkg.dev/tink-test-infrastructure/tink-ci-images/linux-tink-cc-cmake:latest" \
-#  sh ./kokoro/gcp_ubuntu/bazel_fips/run_tests.sh
+# The behavior of this script can be modified using the following optional env
+# variables:
 #
-# The user may specify TINK_BASE_DIR as the folder where to look for
-# tink-java-gcpkms and its depndencies. That is:
-#   ${TINK_BASE_DIR}/tink_java
-#   ${TINK_BASE_DIR}/tink_java_gcpkms
+# - CONTAINER_IMAGE (unset by default): By default when run locally this script
+#   executes tests directly on the host. The CONTAINER_IMAGE variable can be set
+#   to execute tests in a custom container image for local testing. E.g.:
+#
+#   CONTAINER_IMAGE="us-docker.pkg.dev/tink-test-infrastructure/tink-ci-images/linux-tink-java-base:latest" \
+#     sh ./kokoro/gcp_ubuntu/bazel/run_tests.sh
 set -eEuo pipefail
-
-readonly GITHUB_ORG="https://github.com/tink-crypto"
 
 RUN_COMMAND_ARGS=()
 if [[ -n "${KOKORO_ARTIFACTS_DIR:-}" ]] ; then
@@ -43,17 +41,8 @@ if [[ -n "${CONTAINER_IMAGE:-}" ]]; then
   RUN_COMMAND_ARGS+=( -c "${CONTAINER_IMAGE}" )
 fi
 
-# Check for dependencies in TINK_BASE_DIR. Any that aren't present will be
-# downloaded.
-./kokoro/testutils/fetch_git_repo_if_not_present.sh "${TINK_BASE_DIR}" \
-  "${GITHUB_ORG}/tink-java"
-
 ./kokoro/testutils/copy_credentials.sh "testdata" "gcp"
 ./kokoro/testutils/copy_credentials.sh "examples/testdata" "gcp"
-
-cp WORKSPACE WORKSPACE.bak
-./kokoro/testutils/replace_http_archive_with_local_repository.py \
-  -f WORKSPACE -t ..
 
 cat <<'EOF' > _do_run_test.sh
 set -euo pipefail
@@ -65,7 +54,6 @@ if ! cmp -s BUILD.bazel BUILD.bazel.temp; then
   echo "patch BUILD.bazel<<PATCH"
   echo "$(diff BUILD.bazel BUILD.bazel.temp)"
   echo "PATCH"
-EOP
   exit 1
 fi
 MANUAL_TARGETS=()
@@ -97,7 +85,6 @@ trap cleanup EXIT
 cleanup() {
   rm -rf _do_run_test.sh
   rm -rf BUILD.bazel.temp
-  mv WORKSPACE.bak WORKSPACE
 }
 
 # Share the required Kokoro env variables.

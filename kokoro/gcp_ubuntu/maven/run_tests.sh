@@ -14,17 +14,17 @@
 # limitations under the License.
 ################################################################################
 
-# By default when run locally this script runs the command below directly on the
-# host. The CONTAINER_IMAGE variable can be set to run on a custom container
-# image for local testing. E.g.:
+# Builds and tests tink-java-gcpkms and its examples using Maven.
 #
-# CONTAINER_IMAGE="us-docker.pkg.dev/tink-test-infrastructure/tink-ci-images/linux-tink-cc-cmake:latest" \
-#  sh ./kokoro/gcp_ubuntu/bazel_fips/run_tests.sh
+# The behavior of this script can be modified using the following optional env
+# variables:
 #
-# The user may specify TINK_BASE_DIR as the folder where to look for
-# tink-java-gcpkms and its depndencies. That is:
-#   ${TINK_BASE_DIR}/tink_java
-#   ${TINK_BASE_DIR}/tink_java_gcpkms
+# - CONTAINER_IMAGE (unset by default): By default when run locally this script
+#   executes tests directly on the host. The CONTAINER_IMAGE variable can be set
+#   to execute tests in a custom container image for local testing. E.g.:
+#
+#   CONTAINER_IMAGE="us-docker.pkg.dev/tink-test-infrastructure/tink-ci-images/linux-tink-java-base:latest" \
+#     sh ./kokoro/gcp_ubuntu/maven/run_tests.sh
 set -eEuo pipefail
 
 readonly GITHUB_ORG="https://github.com/tink-crypto"
@@ -37,18 +37,13 @@ readonly IS_KOKORO
 
 RUN_COMMAND_ARGS=()
 if [[ "${IS_KOKORO}" == "true" ]] ; then
-  TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
-  source \
-    "${TINK_BASE_DIR}/tink_java_gcpkms/kokoro/testutils/java_test_container_images.sh"
+  readonly TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
+  cd "${TINK_BASE_DIR}/tink_java_gcpkms"
+  source ./kokoro/testutils/java_test_container_images.sh
   CONTAINER_IMAGE="${TINK_JAVA_BASE_IMAGE}"
   RUN_COMMAND_ARGS+=( -k "${TINK_GCR_SERVICE_KEY}" )
 fi
-
-: "${TINK_BASE_DIR:=$(cd .. && pwd)}"
-readonly TINK_BASE_DIR
 readonly CONTAINER_IMAGE
-
-cd "${TINK_BASE_DIR}/tink_java_gcpkms"
 
 if [[ -n "${CONTAINER_IMAGE:-}" ]]; then
   RUN_COMMAND_ARGS+=( -c "${CONTAINER_IMAGE}" )
@@ -58,20 +53,10 @@ cat <<'EOF' > _do_run_test.sh
 set -euo pipefail
 
 readonly MAVEN_POM_FILE="maven/tink-java-gcpkms.pom.xml"
-# Ignore com.google.crypto.tink:tink; this is a Bazel dependency, not a Maven one.
+# Ignore com.google.crypto.tink:tink; this is a Bazel dependency, not a Maven
+# one.
 ./kokoro/testutils/check_maven_bazel_deps_consistency.sh \
   -e "com.google.crypto.tink:tink" "//:tink-gcpkms" "${MAVEN_POM_FILE}"
-
-# Install the latest snapshots locally.
-(
-  cd ../tink_java
-  ./maven/maven_deploy_library.sh install tink \
-    maven/tink-java.pom.xml HEAD
-)
-
-# Build tink-java-gcpkms against tink-java at HEAD-SNAPSHOT.
-mvn versions:set-property -Dproperty=tink.version -DnewVersion=HEAD-SNAPSHOT \
-  --file "${MAVEN_POM_FILE}"
 
 ./maven/maven_deploy_library.sh install tink-gcpkms "${MAVEN_POM_FILE}" HEAD
 
@@ -86,15 +71,6 @@ EOF
 
 chmod +x _do_run_test.sh
 
-# Check for dependencies in TINK_BASE_DIR. Any that aren't present will be
-# downloaded.
-./kokoro/testutils/fetch_git_repo_if_not_present.sh "${TINK_BASE_DIR}" \
-  "${GITHUB_ORG}/tink-java"
-
-cp WORKSPACE WORKSPACE.bak
-
-./kokoro/testutils/replace_http_archive_with_local_repository.py \
-  -f WORKSPACE -t ..
 ./kokoro/testutils/copy_credentials.sh "testdata" "gcp"
 
 # Run cleanup on EXIT.
@@ -102,7 +78,6 @@ trap cleanup EXIT
 
 cleanup() {
   rm -rf _do_run_test.sh
-  mv WORKSPACE.bak WORKSPACE
 }
 
 ./kokoro/testutils/run_command.sh "${RUN_COMMAND_ARGS[@]}" ./_do_run_test.sh

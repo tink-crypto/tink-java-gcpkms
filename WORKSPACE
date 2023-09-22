@@ -1,21 +1,18 @@
 workspace(name = "tink_java_gcpkms")
 
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+load("@tink_java_gcpkms//:tink_java_gcpkms_deps.bzl", "TINK_JAVA_GCPKMS_MAVEN_ARTIFACTS", "tink_java_gcpkms_deps")
 
-http_archive(
-    name = "tink_java",
-    urls = ["https://github.com/tink-crypto/tink-java/archive/main.zip"],
-    strip_prefix = "tink-java-main",
-)
+tink_java_gcpkms_deps()
 
-load("@tink_java//:tink_java_deps.bzl", "tink_java_deps", "TINK_MAVEN_ARTIFACTS")
+load("@tink_java//:tink_java_deps.bzl", "TINK_MAVEN_ARTIFACTS", "tink_java_deps")
+
 tink_java_deps()
 
 load("@tink_java//:tink_java_deps_init.bzl", "tink_java_deps_init")
-load("@tink_java_gcpkms//:tink_java_gcpkms_deps.bzl", "TINK_JAVA_GCPKMS_MAVEN_ARTIFACTS")
-load("@rules_jvm_external//:defs.bzl", "maven_install")
 
 tink_java_deps_init()
+
+load("@rules_jvm_external//:defs.bzl", "maven_install")
 
 maven_install(
     artifacts = TINK_MAVEN_ARTIFACTS + TINK_JAVA_GCPKMS_MAVEN_ARTIFACTS,
