@@ -2,14 +2,29 @@
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+TINK_JAVA_GCPKMS_MAVEN_TEST_ARTIFACTS = [
+    "com.google.truth:truth:0.44",
+    "junit:junit:4.13.2",
+]
+
+TINK_JAVA_GCPKMS_MAVEN_TOOLS_ARTIFACTS = [
+    "org.ow2.asm:asm-commons:7.0",
+    "org.ow2.asm:asm:7.0",
+    "org.pantsbuild:jarjar:1.7.2",
+]
+
 TINK_JAVA_GCPKMS_MAVEN_ARTIFACTS = [
     "com.google.api-client:google-api-client:2.2.0",
     "com.google.apis:google-api-services-cloudkms:v1-rev20221107-2.0.0",
     "com.google.auth:google-auth-library-oauth2-http:1.5.3",
-    "com.google.http-client:google-http-client:1.43.1",
-    "com.google.http-client:google-http-client-gson:1.43.1",
+    "com.google.auto.service:auto-service-annotations:1.1.1",
+    "com.google.auto.service:auto-service:1.1.1",
+    "com.google.auto:auto-common:1.2.2",
+    "com.google.code.findbugs:jsr305:3.0.2",
+    "com.google.errorprone:error_prone_annotations:2.22.0",
+    "com.google.http-client:google-http-client-gson:1.43.3",
+    "com.google.http-client:google-http-client:1.43.3",
     "com.google.oauth-client:google-oauth-client:1.34.1",
-    "com.fasterxml.jackson.core:jackson-core:2.13.1",
 ]
 
 def tink_java_gcpkms_deps():
