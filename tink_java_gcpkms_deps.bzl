@@ -16,10 +16,11 @@ TINK_JAVA_GCPKMS_MAVEN_TOOLS_ARTIFACTS = [
 TINK_JAVA_GCPKMS_MAVEN_ARTIFACTS = [
     "com.google.api-client:google-api-client:2.2.0",
     "com.google.apis:google-api-services-cloudkms:v1-rev20221107-2.0.0",
-    "com.google.auth:google-auth-library-oauth2-http:1.5.3",
+    "com.google.auth:google-auth-library-oauth2-http:1.20.0",
     "com.google.auto.service:auto-service-annotations:1.1.1",
     "com.google.auto.service:auto-service:1.1.1",
     "com.google.auto:auto-common:1.2.2",
+    "com.google.cloud:google-cloud-kms:2.31.0",
     "com.google.code.findbugs:jsr305:3.0.2",
     "com.google.errorprone:error_prone_annotations:2.22.0",
     "com.google.http-client:google-http-client-gson:1.43.3",

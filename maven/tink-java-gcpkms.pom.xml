@@ -86,7 +86,8 @@
     <java.version>1.8</java.version>
     <google-api-client.version>2.2.0</google-api-client.version>
     <google-api-services-cloudkms.version>v1-rev20221107-2.0.0</google-api-services-cloudkms.version>
-    <google-auth-library-oauth2-http.version>1.5.3</google-auth-library-oauth2-http.version>
+    <google-cloud-google-cloud-kms.version>2.31.0</google-cloud-google-cloud-kms.version>
+    <google-auth-library-oauth2-http.version>1.20.0</google-auth-library-oauth2-http.version>
     <auto-service-annotations.version>1.1.1</auto-service-annotations.version>
     <jsr305.version>3.0.2</jsr305.version>
     <error_prone_annotations.version>2.22.0</error_prone_annotations.version>
@@ -106,6 +107,11 @@
       <groupId>com.google.apis</groupId>
       <artifactId>google-api-services-cloudkms</artifactId>
       <version>${google-api-services-cloudkms.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>com.google.cloud</groupId>
+      <artifactId>google-cloud-kms</artifactId>
+      <version>${google-cloud-google-cloud-kms.version}</version>
     </dependency>
     <dependency>
       <groupId>com.google.auth</groupId>
