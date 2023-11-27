@@ -31,10 +31,11 @@ TINK_JAVA_GCPKMS_MAVEN_ARTIFACTS = [
 def tink_java_gcpkms_deps():
     """Bazel dependencies for tink-java-gcpkms."""
     if not native.existing_rule("tink_java"):
-        # Sep 22nd, 2023.
+        # TODO(b/301487003): Replace this with tink-java@1.12.0 when available.
+        # Commit from Sep 28, 2023.
         http_archive(
             name = "tink_java",
-            urls = ["https://github.com/tink-crypto/tink-java/releases/download/v1.11.0/tink-java-1.11.0.zip"],
-            strip_prefix = "tink-java-1.11.0",
-            sha256 = "2bd264c2f0c474c77e2d1e04c627398e963b7a6d0164cfb743ab60a59ab998bd",
+            urls = ["https://github.com/tink-crypto/tink-java/archive/0abd8cb74dbb62017dc0e6c82091d903d0e4f0f0.zip"],
+            strip_prefix = "tink-java-0abd8cb74dbb62017dc0e6c82091d903d0e4f0f0",
+            sha256 = "0358c493baf44ecae1216f6e2a9fe5eb77da115580a0132ae1d2fd9ec32ee301",
         )
