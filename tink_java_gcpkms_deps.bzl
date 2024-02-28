@@ -14,6 +14,7 @@ TINK_JAVA_GCPKMS_MAVEN_TOOLS_ARTIFACTS = [
 ]
 
 TINK_JAVA_GCPKMS_MAVEN_ARTIFACTS = [
+    "com.google.api.grpc:grpc-google-cloud-kms-v1:0.124.0",
     "com.google.api.grpc:proto-google-cloud-kms-v1:0.124.0",
     "com.google.api-client:google-api-client:2.2.0",
     "com.google.apis:google-api-services-cloudkms:v1-rev20221107-2.0.0",
@@ -28,6 +29,10 @@ TINK_JAVA_GCPKMS_MAVEN_ARTIFACTS = [
     "com.google.http-client:google-http-client:1.43.3",
     "com.google.oauth-client:google-oauth-client:1.34.1",
     "com.google.protobuf:protobuf-java:3.25.1",
+    "io.grpc:grpc-api:1.59.0",
+    "io.grpc:grpc-inprocess:1.59.0",
+    "io.grpc:grpc-stub:1.59.0",
+    "io.grpc:grpc-testing:1.59.0",
 ]
 
 def tink_java_gcpkms_deps():
