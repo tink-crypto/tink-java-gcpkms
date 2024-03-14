@@ -13,6 +13,8 @@ TINK_JAVA_GCPKMS_MAVEN_TOOLS_ARTIFACTS = [
     "org.pantsbuild:jarjar:1.7.2",
 ]
 
+_GRPC_VERSION = "1.62.2"
+
 TINK_JAVA_GCPKMS_MAVEN_ARTIFACTS = [
     "com.google.api.grpc:grpc-google-cloud-kms-v1:0.124.0",
     "com.google.api.grpc:proto-google-cloud-kms-v1:0.124.0",
@@ -24,15 +26,15 @@ TINK_JAVA_GCPKMS_MAVEN_ARTIFACTS = [
     "com.google.auto:auto-common:1.2.2",
     "com.google.cloud:google-cloud-kms:2.31.0",
     "com.google.code.findbugs:jsr305:3.0.2",
-    "com.google.errorprone:error_prone_annotations:2.22.0",
+    "com.google.errorprone:error_prone_annotations:2.23.0",
     "com.google.http-client:google-http-client-gson:1.43.3",
     "com.google.http-client:google-http-client:1.43.3",
     "com.google.oauth-client:google-oauth-client:1.34.1",
     "com.google.protobuf:protobuf-java:3.25.1",
-    "io.grpc:grpc-api:1.59.0",
-    "io.grpc:grpc-inprocess:1.59.0",
-    "io.grpc:grpc-stub:1.59.0",
-    "io.grpc:grpc-testing:1.59.0",
+    "io.grpc:grpc-api:%s" % _GRPC_VERSION,
+    "io.grpc:grpc-inprocess:%s" % _GRPC_VERSION,
+    "io.grpc:grpc-stub:%s" % _GRPC_VERSION,
+    "io.grpc:grpc-testing:%s" % _GRPC_VERSION,
 ]
 
 def tink_java_gcpkms_deps():
