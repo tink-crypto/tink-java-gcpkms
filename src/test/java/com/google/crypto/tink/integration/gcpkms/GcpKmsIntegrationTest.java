@@ -21,8 +21,6 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertThrows;
 
 import com.google.crypto.tink.Aead;
-import com.google.crypto.tink.BinaryKeysetReader;
-import com.google.crypto.tink.CleartextKeysetHandle;
 import com.google.crypto.tink.InsecureSecretKeyAccess;
 import com.google.crypto.tink.KeyTemplate;
 import com.google.crypto.tink.KeyTemplates;
@@ -226,7 +224,7 @@ public class GcpKmsIntegrationTest {
 
     // CleartextKeysetHandle and BinaryKeysetReader instead of TinkProtoKeysetFormat also works
     KeysetHandle handle2 =
-        CleartextKeysetHandle.read(BinaryKeysetReader.withBytes(unwrappedKeyset));
+        TinkProtoKeysetFormat.parseKeyset(unwrappedKeyset, InsecureSecretKeyAccess.get());
     Aead aead2 = handle2.getPrimitive(Aead.class);
     byte[] decrypted2 = aead2.decrypt(ciphertext, /* associatedData= */ "animal".getBytes(UTF_8));
     assertThat(decrypted2).isEqualTo("elephant".getBytes(UTF_8));
