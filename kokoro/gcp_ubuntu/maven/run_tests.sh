@@ -49,6 +49,17 @@ if [[ -n "${CONTAINER_IMAGE:-}" ]]; then
   RUN_COMMAND_ARGS+=( -c "${CONTAINER_IMAGE}" )
 fi
 
+# File that stores environment variables to pass to the container.
+readonly ENV_VARIABLES_FILE="/tmp/env_variables.txt"
+
+if [[ -n "${TINK_REMOTE_BAZEL_CACHE_GCS_BUCKET:-}" ]]; then
+  cp "${TINK_REMOTE_BAZEL_CACHE_SERVICE_KEY}" ./cache_key
+  cat <<EOF > "${ENV_VARIABLES_FILE}"
+BAZEL_REMOTE_CACHE_NAME=${TINK_REMOTE_BAZEL_CACHE_GCS_BUCKET}/bazel/${TINK_JAVA_BASE_IMAGE_HASH}
+EOF
+  RUN_COMMAND_ARGS+=( -e "${ENV_VARIABLES_FILE}" )
+fi
+
 cat <<'EOF' > _do_run_test.sh
 set -euo pipefail
 
@@ -58,7 +69,14 @@ readonly MAVEN_POM_FILE="maven/tink-java-gcpkms.pom.xml"
 ./kokoro/testutils/check_maven_bazel_deps_consistency.sh \
   -e "com.google.crypto.tink:tink" "//:tink-gcpkms" "${MAVEN_POM_FILE}"
 
-./maven/maven_deploy_library.sh install tink-gcpkms "${MAVEN_POM_FILE}" HEAD
+MAVEN_DEPLOY_LIBRARY_OPTS=()
+if [[ -n "${BAZEL_REMOTE_CACHE_NAME:-}" ]]; then
+  MAVEN_DEPLOY_LIBRARY_OPTS+=( -c "${BAZEL_REMOTE_CACHE_NAME}" )
+fi
+readonly MAVEN_DEPLOY_LIBRARY_OPTS
+
+./maven/maven_deploy_library.sh "${MAVEN_DEPLOY_LIBRARY_OPTS[@]}" install \
+  tink-gcpkms "${MAVEN_POM_FILE}" HEAD
 
 readonly CREDENTIALS_FILE_PATH="testdata/gcp/credential.json"
 readonly KMS_KEY_URI="gcp-kms://projects/tink-test-infrastructure/locations/global/keyRings/unit-and-integration-testing/cryptoKeys/aead-key"
@@ -77,7 +95,7 @@ chmod +x _do_run_test.sh
 trap cleanup EXIT
 
 cleanup() {
-  rm -rf _do_run_test.sh
+  rm -rf _do_run_test.sh "${ENV_VARIABLES_FILE}"
 }
 
 ./kokoro/testutils/run_command.sh "${RUN_COMMAND_ARGS[@]}" ./_do_run_test.sh
@@ -92,11 +110,11 @@ if [[ "${IS_KOKORO}" == "true" \
 
   # Share the required env variables with the container to allow publishing the
   # snapshot on Sonatype.
-  cat <<EOF > env_variables.txt
+  cat <<EOF >> "${ENV_VARIABLES_FILE}"
 SONATYPE_USERNAME
 SONATYPE_PASSWORD
 EOF
-  RUN_COMMAND_ARGS+=( -e env_variables.txt )
+  RUN_COMMAND_ARGS+=( -e "${ENV_VARIABLES_FILE}" )
 
   ./kokoro/testutils/run_command.sh "${RUN_COMMAND_ARGS[@]}" \
     ./maven/maven_deploy_library.sh -u "${GITHUB_URL}" snapshot tink-gcpkms \

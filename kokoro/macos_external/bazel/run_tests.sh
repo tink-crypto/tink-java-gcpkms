@@ -33,25 +33,41 @@ fi
 
 # Run manual tests which rely on key material injected into the Kokoro
 # environement.
-MANUAL_TARGETS=()
+TINK_JAVA_GCPKMS_RUN_BAZEL_TESTS_ARGS=()
+
+if [[ -n "${TINK_REMOTE_BAZEL_CACHE_GCS_BUCKET:-}" ]]; then
+  cp "${TINK_REMOTE_BAZEL_CACHE_SERVICE_KEY}" ./cache_key
+  TINK_JAVA_GCPKMS_RUN_BAZEL_TESTS_ARGS+=(
+    -c "${TINK_REMOTE_BAZEL_CACHE_GCS_BUCKET}/bazel/macos_tink_java_gcpkms"
+  )
+fi
+TINK_JAVA_GCPKMS_RUN_BAZEL_TESTS_ARGS+=( . )
 if [[ -n "${KOKORO_ROOT:-}" ]]; then
-  MANUAL_TARGETS+=(
+  TINK_JAVA_GCPKMS_RUN_BAZEL_TESTS_ARGS+=(
     "//src/test/java/com/google/crypto/tink/integration/gcpkms:GcpKmsIntegrationTest"
   )
 fi
-readonly MANUAL_TARGETS
+readonly TINK_JAVA_GCPKMS_RUN_BAZEL_TESTS_ARGS
 
-./kokoro/testutils/run_bazel_tests.sh . "${MANUAL_TARGETS[@]}"
+./kokoro/testutils/run_bazel_tests.sh \
+  "${TINK_JAVA_GCPKMS_RUN_BAZEL_TESTS_ARGS[@]}"
 
+TINK_JAVA_GCPKMS_EXAMPLES_RUN_BAZEL_TESTS_ARGS=()
+if [[ -n "${TINK_REMOTE_BAZEL_CACHE_GCS_BUCKET:-}" ]]; then
+  TINK_JAVA_GCPKMS_EXAMPLES_RUN_BAZEL_TESTS_ARGS+=(
+    -c "${TINK_REMOTE_BAZEL_CACHE_GCS_BUCKET}/bazel/macos_tink_java_gcpkms"
+  )
+fi
+TINK_JAVA_GCPKMS_EXAMPLES_RUN_BAZEL_TESTS_ARGS+=( "examples" )
 # Targets tagged as "manual" that require setting GCP credentials.
-MANUAL_EXAMPLE_TARGETS=()
 if [[ -n "${KOKORO_ROOT:-}" ]]; then
-  MANUAL_EXAMPLE_TARGETS=(
+  TINK_JAVA_GCPKMS_EXAMPLES_RUN_BAZEL_TESTS_ARGS+=(
     "//gcs:gcs_envelope_aead_example_test"
     "//encryptedkeyset:encrypted_keyset_example_test"
     "//envelopeaead:envelope_aead_example_test"
   )
 fi
-readonly MANUAL_EXAMPLE_TARGETS
+readonly TINK_JAVA_GCPKMS_EXAMPLES_RUN_BAZEL_TESTS_ARGS
 
-./kokoro/testutils/run_bazel_tests.sh "examples" "${MANUAL_EXAMPLE_TARGETS[@]}"
+./kokoro/testutils/run_bazel_tests.sh \
+  "${TINK_JAVA_GCPKMS_EXAMPLES_RUN_BAZEL_TESTS_ARGS[@]}"
