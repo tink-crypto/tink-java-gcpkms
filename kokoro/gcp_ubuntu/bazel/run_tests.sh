@@ -41,74 +41,22 @@ if [[ -n "${CONTAINER_IMAGE:-}" ]]; then
   RUN_COMMAND_ARGS+=( -c "${CONTAINER_IMAGE}" )
 fi
 
-if [[ -n "${TINK_REMOTE_BAZEL_CACHE_GCS_BUCKET:-}" ]]; then
-  cp "${TINK_REMOTE_BAZEL_CACHE_SERVICE_KEY}" ./cache_key
-  cat <<EOF > /tmp/env_variables.txt
-BAZEL_REMOTE_CACHE_NAME=${TINK_REMOTE_BAZEL_CACHE_GCS_BUCKET}/bazel/${TINK_JAVA_BASE_IMAGE_HASH}
-EOF
-  RUN_COMMAND_ARGS+=( -e /tmp/env_variables.txt )
-fi
+readonly RUN_COMMAND_ARGS
 
 ./kokoro/testutils/copy_credentials.sh "testdata" "gcp"
 ./kokoro/testutils/copy_credentials.sh "examples/testdata" "gcp"
 
-cat <<'EOF' > _do_run_test.sh
-set -euo pipefail
-
-./tools/create_maven_build_file.sh -o BUILD.bazel.temp
-if ! cmp -s BUILD.bazel BUILD.bazel.temp; then
-  echo -n "ERROR: Update your BUILD.bazel file using" >&2
-  echo " ./tools/create_maven_build_file.sh or applying:"
-  echo "patch BUILD.bazel<<PATCH"
-  echo "$(diff BUILD.bazel BUILD.bazel.temp)"
-  echo "PATCH"
-  exit 1
-fi
-MANUAL_TARGETS=()
-if [[ -n "${KOKORO_ROOT:-}" ]]; then
-  MANUAL_TARGETS+=(
-    "//src/test/java/com/google/crypto/tink/integration/gcpkms:GcpKmsIntegrationTest"
+TEST_SCRIPT_ARGS=()
+if [[ -n "${TINK_REMOTE_BAZEL_CACHE_GCS_BUCKET:-}" ]]; then
+  cp "${TINK_REMOTE_BAZEL_CACHE_SERVICE_KEY}" ./cache_key
+  TEST_SCRIPT_ARGS+=(
+    -c "${TINK_REMOTE_BAZEL_CACHE_GCS_BUCKET}/bazel/${TINK_JAVA_BASE_IMAGE_HASH}"
   )
 fi
-readonly MANUAL_TARGETS
-
-CACHE_FLAGS=()
-if [[ -n "${BAZEL_REMOTE_CACHE_NAME:-}" ]]; then
-  CACHE_FLAGS+=( -c "${BAZEL_REMOTE_CACHE_NAME}" )
-fi
-readonly CACHE_FLAGS
-
-./kokoro/testutils/run_bazel_tests.sh "${CACHE_FLAGS[@]}" . \
-  "${MANUAL_TARGETS[@]}"
-
-# Targets tagged as "manual" that require setting GCP credentials.
-EXAMPLES_MANUAL_TARGETS=()
 if [[ -n "${KOKORO_ROOT:-}" ]]; then
-  EXAMPLES_MANUAL_TARGETS=(
-    "//gcs:gcs_envelope_aead_example_test"
-    "//encryptedkeyset:encrypted_keyset_example_test"
-    "//envelopeaead:envelope_aead_example_test"
-  )
+  TEST_SCRIPT_ARGS+=( -m )
 fi
-readonly EXAMPLES_MANUAL_TARGETS
-./kokoro/testutils/run_bazel_tests.sh "${CACHE_FLAGS[@]}" "examples" \
-  "${EXAMPLES_MANUAL_TARGETS[@]}"
-EOF
-chmod +x _do_run_test.sh
+readonly TEST_SCRIPT_ARGS
 
-# Run cleanup on EXIT.
-trap cleanup EXIT
-
-cleanup() {
-  rm -rf _do_run_test.sh
-  rm -rf BUILD.bazel.temp
-}
-
-# Share the required Kokoro env variables.
-cat <<EOF > env_variables.txt
-KOKORO_ROOT
-EOF
-RUN_COMMAND_ARGS+=( -e env_variables.txt )
-readonly RUN_COMMAND_ARGS
-
-./kokoro/testutils/run_command.sh "${RUN_COMMAND_ARGS[@]}" ./_do_run_test.sh
+./kokoro/testutils/run_command.sh "${RUN_COMMAND_ARGS[@]}" \
+  ./kokoro/gcp_ubuntu/bazel/test_script.sh "${TEST_SCRIPT_ARGS[@]}"
