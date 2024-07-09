@@ -74,7 +74,11 @@
 <dl>
 <dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsAead.Builder.html#build--">build()</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsAead.Builder.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsAead.Builder</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.Builder.html#build--">build()</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.Builder.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsPublicKeySign.Builder</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsAead.html#builder--">builder()</a></span> - Static method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsAead.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsAead</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.html#builder--">builder()</a></span> - Static method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsPublicKeySign</a></dt>
 <dd>&nbsp;</dd>
 </dl>
 <a name="I:C">
@@ -135,6 +139,15 @@
 <dd>
 <div class="block">Constructs a specific GcpKmsClient that is bound to a single key identified by <code>uri</code>.</div>
 </dd>
+<dt><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.html" title="class in com.google.crypto.tink.integration.gcpkms"><span class="typeNameLink">GcpKmsPublicKeySign</span></a> - Class in <a href="com/google/crypto/tink/integration/gcpkms/package-summary.html">com.google.crypto.tink.integration.gcpkms</a></dt>
+<dd>
+<div class="block">A <code>PublicKeySign</code> that forwards asymmetric sign requests to a key in <a
+ href="https://cloud.google.com/kms/">Google Cloud KMS</a> using GRPC.</div>
+</dd>
+<dt><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.Builder.html" title="class in com.google.crypto.tink.integration.gcpkms"><span class="typeNameLink">GcpKmsPublicKeySign.Builder</span></a> - Class in <a href="com/google/crypto/tink/integration/gcpkms/package-summary.html">com.google.crypto.tink.integration.gcpkms</a></dt>
+<dd>
+<div class="block">A Builder to create a <code>PublicKeySign</code> that communicates with Cloud KMS via gRPC.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsClient.html#getAead-java.lang.String-">getAead(String)</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsClient.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsClient</a></dt>
 <dd>&nbsp;</dd>
 </dl>
@@ -171,10 +184,20 @@
 <dd>
 <div class="block">Set the KeyManagementServiceClient object.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.Builder.html#setKeyManagementServiceClient-com.google.cloud.kms.v1.KeyManagementServiceClient-">setKeyManagementServiceClient(KeyManagementServiceClient)</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.Builder.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsPublicKeySign.Builder</a></dt>
+<dd>
+<div class="block">Set the KeyManagementServiceClient object.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsAead.Builder.html#setKeyName-java.lang.String-">setKeyName(String)</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsAead.Builder.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsAead.Builder</a></dt>
 <dd>
 <div class="block">Set the ResourceName of the KMS key.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.Builder.html#setKeyName-java.lang.String-">setKeyName(String)</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.Builder.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsPublicKeySign.Builder</a></dt>
+<dd>
+<div class="block">Set the ResourceName of the KMS key.</div>
+</dd>
+<dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.html#sign-byte:A-">sign(byte[])</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsPublicKeySign</a></dt>
+<dd>&nbsp;</dd>
 </dl>
 <a name="I:W">
 <!--   -->
