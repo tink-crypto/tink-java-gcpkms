@@ -39,6 +39,21 @@ java_library(
     ],
 )
 
+java_library(
+    name = "gcp_kms_public_key_sign",
+    srcs = ["GcpKmsPublicKeySign.java"],
+    deps = [
+        "@tink_java//src/main/java/com/google/crypto/tink:public_key_sign",
+        "@com_google_protobuf//:wrappers_proto",
+        "@maven//:com_google_api_grpc_proto_google_cloud_kms_v1",
+        "@maven//:com_google_cloud_google_cloud_kms",
+        "@maven//:com_google_code_findbugs_jsr305",
+        "@maven//:com_google_errorprone_error_prone_annotations",
+        "@maven//:com_google_guava_guava",
+        "@maven//:com_google_protobuf_protobuf_java",
+    ],
+)
+
 java_plugin(
     name = "auto_service_plugin",
     processor_class = "com.google.auto.service.processor.AutoServiceProcessor",

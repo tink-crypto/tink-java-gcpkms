@@ -27,6 +27,8 @@ TINK_JAVA_GCPKMS_MAVEN_ARTIFACTS = [
     "com.google.cloud:google-cloud-kms:2.48.0",
     "com.google.code.findbugs:jsr305:3.0.2",
     "com.google.errorprone:error_prone_annotations:2.28.0",
+    # This is needed because of computing CRC32C checksums that's not available in java natively.
+    "com.google.guava:guava:33.2.1-jre",
     "com.google.http-client:google-http-client-gson:1.44.2",
     "com.google.http-client:google-http-client:1.44.2",
     "com.google.oauth-client:google-oauth-client:1.34.1",

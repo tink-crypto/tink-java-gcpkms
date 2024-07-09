@@ -21,5 +21,6 @@ gen_maven_jar_rules(
     deps = [
         "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_aead",
         "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_client",
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_public_key_sign",
     ],
 )
