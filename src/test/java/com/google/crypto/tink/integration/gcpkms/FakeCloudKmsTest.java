@@ -72,6 +72,81 @@ public final class FakeCloudKmsTest {
   }
 
   @Test
+  public void testEncryptDecryptWithInvalidAssociatedData_fails() throws Exception {
+    CloudKMS kms = new FakeCloudKms(asList(KEY_ID));
+
+    EncryptRequest encRequest =
+        new EncryptRequest()
+            .encodePlaintext("plaintext".getBytes(UTF_8))
+            .encodeAdditionalAuthenticatedData("associatedData".getBytes(UTF_8));
+
+    EncryptResponse encResponse =
+        kms.projects().locations().keyRings().cryptoKeys().encrypt(KEY_ID, encRequest).execute();
+
+    DecryptRequest decRequestWithInvalidAssociatedData =
+        new DecryptRequest()
+            .encodeCiphertext(encResponse.decodeCiphertext())
+            .encodeAdditionalAuthenticatedData("invalidAssociatedData".getBytes(UTF_8));
+
+    CloudKMS.Projects.Locations.KeyRings.CryptoKeys.Decrypt dec =
+        kms.projects()
+            .locations()
+            .keyRings()
+            .cryptoKeys()
+            .decrypt(KEY_ID, decRequestWithInvalidAssociatedData);
+    assertThrows(IOException.class, dec::execute);
+  }
+
+  @Test
+  public void testEncryptDecryptWithoutAssociatedData() throws Exception {
+    CloudKMS kms = new FakeCloudKms(asList(KEY_ID));
+
+    byte[] plaintext = "plaintext".getBytes(UTF_8);
+
+    EncryptRequest encRequest = new EncryptRequest().encodePlaintext(plaintext);
+
+    EncryptResponse encResponse =
+        kms.projects().locations().keyRings().cryptoKeys().encrypt(KEY_ID, encRequest).execute();
+
+    DecryptRequest decRequest =
+        new DecryptRequest().encodeCiphertext(encResponse.decodeCiphertext());
+
+    DecryptResponse decResponse =
+        kms.projects().locations().keyRings().cryptoKeys().decrypt(KEY_ID, decRequest).execute();
+
+    assertThat(decResponse.decodePlaintext()).isEqualTo(plaintext);
+
+    // Empty associated data is the same as no associated data.
+    DecryptRequest decRequestWithEmptyAssociatedData =
+        new DecryptRequest()
+            .encodeCiphertext(encResponse.decodeCiphertext())
+            .encodeAdditionalAuthenticatedData(new byte[0]);
+
+    DecryptResponse decResponseWithEmptyAssociatedData =
+        kms.projects()
+            .locations()
+            .keyRings()
+            .cryptoKeys()
+            .decrypt(KEY_ID, decRequestWithEmptyAssociatedData)
+            .execute();
+    assertThat(decResponseWithEmptyAssociatedData.decodePlaintext()).isEqualTo(plaintext);
+
+    // A non-empty associated data is no valid for a request without associated data.
+    DecryptRequest decRequestWithInvalidAssociatedData =
+        new DecryptRequest()
+            .encodeCiphertext(encResponse.decodeCiphertext())
+            .encodeAdditionalAuthenticatedData("invalidAssociatedData".getBytes(UTF_8));
+
+    CloudKMS.Projects.Locations.KeyRings.CryptoKeys.Decrypt dec =
+        kms.projects()
+            .locations()
+            .keyRings()
+            .cryptoKeys()
+            .decrypt(KEY_ID, decRequestWithInvalidAssociatedData);
+    assertThrows(IOException.class, dec::execute);
+  }
+
+  @Test
   public void encryptEmptyData_decryptReturnsNull() throws Exception {
     CloudKMS kms = new FakeCloudKms(asList(KEY_ID));
 
