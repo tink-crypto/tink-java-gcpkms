@@ -24,9 +24,11 @@ import com.google.api.services.cloudkms.v1.model.DecryptRequest;
 import com.google.api.services.cloudkms.v1.model.DecryptResponse;
 import com.google.api.services.cloudkms.v1.model.EncryptRequest;
 import com.google.api.services.cloudkms.v1.model.EncryptResponse;
+import com.google.common.hash.Hashing;
 import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.KeyTemplates;
 import com.google.crypto.tink.KeysetHandle;
+import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.HashMap;
@@ -119,12 +121,35 @@ final class FakeCloudKms extends CloudKMS {
                 throw new IOException(
                     "Unknown key ID : " + name + " is not in " + aeads.keySet());
               }
+
+              EncryptResponse response = new EncryptResponse().setName(this.name);
+
+              byte[] plaintext = request.decodePlaintext();
+              try {
+                if (validateCrc32c(plaintext, request.getPlaintextCrc32c())) {
+                  response.setVerifiedPlaintextCrc32c(true);
+                }
+              } catch (IOException e) {
+                throw new IOException("Invalid argument, plaintext " + e.getMessage());
+              }
+
+              byte[] associatedData = request.decodeAdditionalAuthenticatedData();
+              try {
+                if (validateCrc32c(
+                    associatedData, request.getAdditionalAuthenticatedDataCrc32c())) {
+                  response.setVerifiedAdditionalAuthenticatedDataCrc32c(true);
+                }
+              } catch (IOException e) {
+                throw new IOException(
+                    "Invalid argument, additional authenticated data " + e.getMessage());
+              }
+
               try {
                 Aead aead = aeads.get(name);
-                byte[] ciphertext =
-                    aead.encrypt(
-                        request.decodePlaintext(), request.decodeAdditionalAuthenticatedData());
-                return new EncryptResponse().encodeCiphertext(ciphertext);
+                byte[] ciphertext = aead.encrypt(plaintext, associatedData);
+                long ciphertextCrc32c = Hashing.crc32c().hashBytes(ciphertext).padToLong();
+
+                return response.encodeCiphertext(ciphertext).setCiphertextCrc32c(ciphertextCrc32c);
               } catch (GeneralSecurityException e) {
                 throw new IOException(e.getMessage());
               }
@@ -148,15 +173,34 @@ final class FakeCloudKms extends CloudKMS {
               }
               try {
                 Aead aead = aeads.get(name);
-                byte[] plaintext =
-                    aead.decrypt(
-                        request.decodeCiphertext(), request.decodeAdditionalAuthenticatedData());
+
+                byte[] ciphertext = request.decodeCiphertext();
+                try {
+                  validateCrc32c(ciphertext, request.getCiphertextCrc32c());
+                } catch (IOException e) {
+                  throw new IOException("Invalid argument, ciphertext " + e.getMessage());
+                }
+
+                byte[] associatedData = request.decodeAdditionalAuthenticatedData();
+                try {
+                  validateCrc32c(associatedData, request.getAdditionalAuthenticatedDataCrc32c());
+                } catch (IOException e) {
+                  throw new IOException("Invalid argument, associatedData " + e.getMessage());
+                }
+
+                byte[] plaintext = aead.decrypt(ciphertext, associatedData);
+                long plaintextCrc32c = Hashing.crc32c().hashBytes(plaintext).padToLong();
+
+                DecryptResponse response = new DecryptResponse();
+
                 if (plaintext.length == 0) {
                   // The real CloudKMS also returns null in this case.
-                  return new DecryptResponse().encodePlaintext(null);
+                  response.encodePlaintext(null);
                 } else {
-                  return new DecryptResponse().encodePlaintext(plaintext);
+                  response.encodePlaintext(plaintext);
                 }
+
+                return response.setPlaintextCrc32c(plaintextCrc32c);
               } catch (GeneralSecurityException e) {
                 throw new IOException(e.getMessage());
               }
@@ -165,5 +209,18 @@ final class FakeCloudKms extends CloudKMS {
         }
       }
     }
+  }
+
+  // Returns true if validation succeeded, false if validation skipped, throws if validation failed.
+  @CanIgnoreReturnValue
+  private static boolean validateCrc32c(byte[] input, Long expectedCrc32c) throws IOException {
+    if (input == null || expectedCrc32c == null) {
+      return false;
+    }
+    long inputCrc32c = Hashing.crc32c().hashBytes(input).padToLong();
+    if (inputCrc32c != expectedCrc32c) {
+      throw new IOException("CRC mismatch");
+    }
+    return true;
   }
 }

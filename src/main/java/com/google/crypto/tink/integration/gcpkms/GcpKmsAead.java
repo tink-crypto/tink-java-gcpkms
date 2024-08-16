@@ -22,11 +22,14 @@ import com.google.api.services.cloudkms.v1.model.DecryptResponse;
 import com.google.api.services.cloudkms.v1.model.EncryptRequest;
 import com.google.api.services.cloudkms.v1.model.EncryptResponse;
 import com.google.cloud.kms.v1.KeyManagementServiceClient;
+import com.google.common.hash.Hashing;
 import com.google.crypto.tink.Aead;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.protobuf.ByteString;
+import com.google.protobuf.Int64Value;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
+import java.util.Arrays;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 
@@ -59,7 +62,11 @@ public final class GcpKmsAead implements Aead {
       EncryptRequest request =
           new EncryptRequest()
               .encodePlaintext(plaintext)
-              .encodeAdditionalAuthenticatedData(associatedData);
+              .setPlaintextCrc32c(
+                  Hashing.crc32c().hashBytes(toNonNullableByteArray(plaintext)).padToLong())
+              .encodeAdditionalAuthenticatedData(associatedData)
+              .setAdditionalAuthenticatedDataCrc32c(
+                  Hashing.crc32c().hashBytes(toNonNullableByteArray(associatedData)).padToLong());
       EncryptResponse response =
           this.kmsClient
               .projects()
@@ -68,7 +75,28 @@ public final class GcpKmsAead implements Aead {
               .cryptoKeys()
               .encrypt(this.keyName, request)
               .execute();
-      return toNonNullableByteArray(response.decodeCiphertext());
+
+      if (!keyVersionToKeyName(response.getName()).equals(this.keyName)) {
+        throw new GeneralSecurityException(
+            "The key name in the response does not match the requested key name.");
+      }
+      if (response.getVerifiedPlaintextCrc32c() == null || !response.getVerifiedPlaintextCrc32c()) {
+        throw new GeneralSecurityException("Verifying the provided plaintext checksum failed.");
+      }
+
+      if (response.getVerifiedAdditionalAuthenticatedDataCrc32c() == null
+          || !response.getVerifiedAdditionalAuthenticatedDataCrc32c()) {
+        throw new GeneralSecurityException(
+            "Verifying the provided associated data checksum failed.");
+      }
+
+      byte[] ciphertext = toNonNullableByteArray(response.decodeCiphertext());
+      long ciphertextCrc32c = Hashing.crc32c().hashBytes(ciphertext).padToLong();
+      if (response.getCiphertextCrc32c() != ciphertextCrc32c) {
+        throw new GeneralSecurityException("Ciphertext checksum mismatch.");
+      }
+
+      return ciphertext;
     } catch (IOException e) {
       throw new GeneralSecurityException("encryption failed", e);
     }
@@ -81,7 +109,11 @@ public final class GcpKmsAead implements Aead {
       DecryptRequest request =
           new DecryptRequest()
               .encodeCiphertext(ciphertext)
-              .encodeAdditionalAuthenticatedData(associatedData);
+              .setCiphertextCrc32c(
+                  Hashing.crc32c().hashBytes(toNonNullableByteArray(ciphertext)).padToLong())
+              .encodeAdditionalAuthenticatedData(associatedData)
+              .setAdditionalAuthenticatedDataCrc32c(
+                  Hashing.crc32c().hashBytes(toNonNullableByteArray(associatedData)).padToLong());
       DecryptResponse response =
           this.kmsClient
               .projects()
@@ -90,7 +122,13 @@ public final class GcpKmsAead implements Aead {
               .cryptoKeys()
               .decrypt(this.keyName, request)
               .execute();
-      return toNonNullableByteArray(response.decodePlaintext());
+
+      byte[] plaintext = toNonNullableByteArray(response.decodePlaintext());
+      long plaintextCrc32c = Hashing.crc32c().hashBytes(plaintext).padToLong();
+      if (response.getPlaintextCrc32c() != plaintextCrc32c) {
+        throw new GeneralSecurityException("Plaintext checksum mismatch.");
+      }
+      return plaintext;
     } catch (IOException e) {
       throw new GeneralSecurityException("decryption failed", e);
     }
@@ -104,6 +142,31 @@ public final class GcpKmsAead implements Aead {
     } else {
       return data;
     }
+  }
+
+  private static final String KEY_NAME_DELIMITER = "/";
+
+  /**
+   * Converts a resource ID that specifies a key version into a key name. This is done by removing
+   * the last two elements which specify the key version.
+   *
+   * <p>If the resource ID does not match the format of a key version, the input is returned
+   * unmodified.
+   *
+   * <p>For reference, see
+   * https://cloud.google.com/kms/docs/resource-hierarchy#retrieve_resource_id.
+   */
+  private static String keyVersionToKeyName(String keyVersion) {
+    String[] parts = keyVersion.split(KEY_NAME_DELIMITER);
+    if (parts.length != 10
+        || !parts[0].equals("projects")
+        || !parts[2].equals("locations")
+        || !parts[4].equals("keyRings")
+        || !parts[6].equals("cryptoKeys")
+        || !parts[8].equals("cryptoKeyVersions")) {
+      return keyVersion;
+    }
+    return String.join(KEY_NAME_DELIMITER, Arrays.asList(parts).subList(0, 8));
   }
 
   /**
@@ -133,11 +196,36 @@ public final class GcpKmsAead implements Aead {
             com.google.cloud.kms.v1.EncryptRequest.newBuilder()
                 .setName(keyName)
                 .setPlaintext(ByteString.copyFrom(plaintext))
+                .setPlaintextCrc32C(
+                    Int64Value.of(Hashing.crc32c().hashBytes(plaintext).padToLong()))
                 .setAdditionalAuthenticatedData(ByteString.copyFrom(associatedData))
+                .setAdditionalAuthenticatedDataCrc32C(
+                    Int64Value.of(Hashing.crc32c().hashBytes(associatedData).padToLong()))
                 .build();
 
         com.google.cloud.kms.v1.EncryptResponse encResponse = kmsClient.encrypt(encryptRequest);
-        return encResponse.getCiphertext().toByteArray();
+
+        if (!keyVersionToKeyName(encResponse.getName()).equals(keyName)) {
+          throw new GeneralSecurityException(
+              "The key name in the response does not match the requested key name.");
+        }
+        if (!encResponse.getVerifiedPlaintextCrc32C()) {
+          throw new GeneralSecurityException("Verifying the provided plaintext checksum failed.");
+        }
+
+        if (!encResponse.getVerifiedAdditionalAuthenticatedDataCrc32C()) {
+          throw new GeneralSecurityException(
+              "Verifying the provided associated data checksum failed.");
+        }
+
+        byte[] ciphertext = encResponse.getCiphertext().toByteArray();
+
+        long ciphertextCrc = Hashing.crc32c().hashBytes(ciphertext).padToLong();
+        if (ciphertextCrc != encResponse.getCiphertextCrc32C().getValue()) {
+          throw new GeneralSecurityException("Ciphertext checksum mismatch.");
+        }
+
+        return ciphertext;
       } catch (RuntimeException e) {
         throw new GeneralSecurityException("encryption failed", e);
       }
@@ -151,11 +239,23 @@ public final class GcpKmsAead implements Aead {
             com.google.cloud.kms.v1.DecryptRequest.newBuilder()
                 .setName(keyName)
                 .setCiphertext(ByteString.copyFrom(ciphertext))
+                .setCiphertextCrc32C(
+                    Int64Value.of(Hashing.crc32c().hashBytes(ciphertext).padToLong()))
                 .setAdditionalAuthenticatedData(ByteString.copyFrom(associatedData))
+                .setAdditionalAuthenticatedDataCrc32C(
+                    Int64Value.of(Hashing.crc32c().hashBytes(associatedData).padToLong()))
                 .build();
 
         com.google.cloud.kms.v1.DecryptResponse decResponse = kmsClient.decrypt(decryptRequest);
-        return decResponse.getPlaintext().toByteArray();
+
+        byte[] plaintext = decResponse.getPlaintext().toByteArray();
+
+        long plaintextCrc = Hashing.crc32c().hashBytes(plaintext).padToLong();
+        if (plaintextCrc != decResponse.getPlaintextCrc32C().getValue()) {
+          throw new GeneralSecurityException("Plaintext checksum mismatch.");
+        }
+
+        return plaintext;
       } catch (RuntimeException e) {
         throw new GeneralSecurityException("decryption failed", e);
       }

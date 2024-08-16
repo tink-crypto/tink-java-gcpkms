@@ -103,7 +103,7 @@ public final class FakeCloudKmsTest {
   }
 
   @Test
-  public void testEncryptDecrytWithValidCrc_isNotVerified() throws Exception {
+  public void testEncryptDecrytWithValidCrc_success() throws Exception {
     CloudKMS kms = new FakeCloudKms(asList(KEY_ID));
 
     byte[] plaintext = "plaintext".getBytes(UTF_8);
@@ -132,18 +132,10 @@ public final class FakeCloudKmsTest {
         kms.projects().locations().keyRings().cryptoKeys().decrypt(KEY_ID, decRequest).execute();
 
     assertThat(decResponse.decodePlaintext()).isEqualTo(plaintext);
-
-    // TODO(ckl): Add CRC validation to FakeCloudKms.
-    assertThat(encResponse.getVerifiedPlaintextCrc32c()).isNull();
-    assertThat(encResponse.getVerifiedAdditionalAuthenticatedDataCrc32c()).isNull();
-
-    // TODO(ckl): Set CRC in response from FakeCloudKms.
-    assertThat(encResponse.getCiphertextCrc32c()).isNull();
-    assertThat(decResponse.getPlaintextCrc32c()).isNull();
   }
 
   @Test
-  public void testEncryptWithInvalidCrc_successBecauseCrcIsNotVerified() throws Exception {
+  public void testEncryptWithInvalidCrc_executeFails() throws Exception {
     CloudKMS kms = new FakeCloudKms(asList(KEY_ID));
 
     byte[] plaintext = "plaintext".getBytes(UTF_8);
@@ -156,15 +148,13 @@ public final class FakeCloudKmsTest {
             .setPlaintextCrc32c(invalidCrc)
             .encodeAdditionalAuthenticatedData(associatedData);
 
-    // TODO(ckl): Add CRC validation to FakeCloudKms. This should throw.
-    EncryptResponse encResponse =
+    CloudKMS.Projects.Locations.KeyRings.CryptoKeys.Encrypt enc =
         kms.projects()
             .locations()
             .keyRings()
             .cryptoKeys()
-            .encrypt(KEY_ID, encRequestWithInvalidPlaintextCrc)
-            .execute();
-    assertThat(encResponse).isNotNull();
+            .encrypt(KEY_ID, encRequestWithInvalidPlaintextCrc);
+    assertThrows(IOException.class, enc::execute);
 
     EncryptRequest encRequestWithInvalidAssociatedDataCrc =
         new EncryptRequest()
@@ -172,19 +162,17 @@ public final class FakeCloudKmsTest {
             .encodeAdditionalAuthenticatedData(associatedData)
             .setAdditionalAuthenticatedDataCrc32c(invalidCrc);
 
-    // TODO(ckl): Add CRC validation to FakeCloudKms. This should throw.
-    EncryptResponse encResponse2 =
+    CloudKMS.Projects.Locations.KeyRings.CryptoKeys.Encrypt enc2 =
         kms.projects()
             .locations()
             .keyRings()
             .cryptoKeys()
-            .encrypt(KEY_ID, encRequestWithInvalidAssociatedDataCrc)
-            .execute();
-    assertThat(encResponse2).isNotNull();
+            .encrypt(KEY_ID, encRequestWithInvalidAssociatedDataCrc);
+    assertThrows(IOException.class, enc2::execute);
   }
 
   @Test
-  public void testDecrytWithInvalidCrc_successBecauseCrcIsNotVerified() throws Exception {
+  public void testDecrytWithInvalidCrc_executeFails() throws Exception {
     CloudKMS kms = new FakeCloudKms(asList(KEY_ID));
 
     byte[] plaintext = "plaintext".getBytes(UTF_8);
@@ -206,15 +194,13 @@ public final class FakeCloudKmsTest {
             .setCiphertextCrc32c(invalidCrc)
             .encodeAdditionalAuthenticatedData(associatedData);
 
-    // TODO(ckl): Add CRC validation to FakeCloudKms. This should throw.
-    DecryptResponse decResponse =
+    CloudKMS.Projects.Locations.KeyRings.CryptoKeys.Decrypt dec =
         kms.projects()
             .locations()
             .keyRings()
             .cryptoKeys()
-            .decrypt(KEY_ID, decRequestWithInvalidCiphertextCrc)
-            .execute();
-    assertThat(decResponse).isNotNull();
+            .decrypt(KEY_ID, decRequestWithInvalidCiphertextCrc);
+    assertThrows(IOException.class, dec::execute);
 
     DecryptRequest decRequestWithInvalidAssociatedDataCrc =
         new DecryptRequest()
@@ -222,15 +208,13 @@ public final class FakeCloudKmsTest {
             .encodeAdditionalAuthenticatedData(associatedData)
             .setAdditionalAuthenticatedDataCrc32c(invalidCrc);
 
-    // TODO(ckl): Add CRC validation to FakeCloudKms. This should throw.
-    DecryptResponse decResponse2 =
+    CloudKMS.Projects.Locations.KeyRings.CryptoKeys.Decrypt dec2 =
         kms.projects()
             .locations()
             .keyRings()
             .cryptoKeys()
-            .decrypt(KEY_ID, decRequestWithInvalidAssociatedDataCrc)
-            .execute();
-    assertThat(decResponse2).isNotNull();
+            .decrypt(KEY_ID, decRequestWithInvalidAssociatedDataCrc);
+    assertThrows(IOException.class, dec2::execute);
   }
 
   @Test
