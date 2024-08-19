@@ -45,7 +45,7 @@ def tink_java_gcpkms_deps():
     # This is needed because tink-java@1.13.0 imports Protobuf v24.3, but grpc-google-cloud-kms
     # requires v25.3.
     if not native.existing_rule("com_google_protobuf"):
-        # Feb 15th, 2024.
+        # Release from 2024-02-15.
         http_archive(
             name = "com_google_protobuf",
             strip_prefix = "protobuf-25.3",
@@ -54,7 +54,7 @@ def tink_java_gcpkms_deps():
         )
 
     if not native.existing_rule("tink_java"):
-        # Apr 2nd, 2024.
+        # Release from 2024-04-02.
         http_archive(
             name = "tink_java",
             urls = ["https://github.com/tink-crypto/tink-java/releases/download/v1.13.0/tink-java-1.13.0.zip"],
