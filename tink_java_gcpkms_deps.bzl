@@ -54,10 +54,10 @@ def tink_java_gcpkms_deps():
         )
 
     if not native.existing_rule("tink_java"):
-        # Release from 2024-04-02.
+        # Release from 2024-08-06.
         http_archive(
             name = "tink_java",
-            urls = ["https://github.com/tink-crypto/tink-java/releases/download/v1.13.0/tink-java-1.13.0.zip"],
-            strip_prefix = "tink-java-1.13.0",
-            sha256 = "d795e05bd264d78f438670f7d56dbe38eeb14b16e5f73adaaf20b6bb2bd11683",
+            urls = ["https://github.com/tink-crypto/tink-java/releases/download/v1.14.1/tink-java-1.14.1.zip"],
+            strip_prefix = "tink-java-1.14.1",
+            sha256 = "1f8a2df8fcbfc9b19fba0d5f58cdcc12021cb33cdc307d22d840b437fd17347c",
         )
