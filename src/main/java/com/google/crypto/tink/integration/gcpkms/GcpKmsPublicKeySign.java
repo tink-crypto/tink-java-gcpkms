@@ -82,7 +82,10 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
       builder
           .setDigest(digest)
           .setDigestCrc32C(
-              Int64Value.of(Hashing.crc32c().hashBytes(digest.toByteArray()).padToLong()));
+              Int64Value.of(
+                  Hashing.crc32c()
+                      .hashBytes(getDigestBytes(digest).asReadOnlyByteBuffer())
+                      .padToLong()));
     }
 
     try {
@@ -135,6 +138,20 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
     }
 
     return false;
+  }
+
+  private static ByteString getDigestBytes(Digest digest) {
+    switch (digest.getDigestCase()) {
+      case SHA256:
+        return digest.getSha256();
+      case SHA384:
+        return digest.getSha384();
+      case SHA512:
+        return digest.getSha512();
+      case DIGEST_NOT_SET:
+        return ByteString.EMPTY;
+    }
+    return ByteString.EMPTY;
   }
 
   /** Finds out and returns the proper DigestCase for the given algorithm. */

@@ -75,8 +75,12 @@ public final class GcpKmsPublicKeySignTest {
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/7";
   private static final String KEY_NAME_FOR_INVALID_ALGORITHM =
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/8";
+  private static final String KEY_NAME_FOR_REQUEST_DIGEST_CRC32C =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/9";
   private static final String KEY_PEM = "PEM";
   private static final byte[] DATA_FOR_SIGN = "data for signing".getBytes(UTF_8);
+  // The value of digest_crc32c for DATA_FOR_SIGN
+  private static final Int64Value REQUEST_DIGEST_CRC32C = Int64Value.of(62061691L);
 
   private PublicKeySign dataSigner;
   private PublicKeySign digestSigner;
@@ -144,6 +148,20 @@ public final class GcpKmsPublicKeySignTest {
                   .setSignatureCrc32C(Int64Value.of(signatureCrc32c));
               break;
             }
+          case KEY_NAME_FOR_REQUEST_DIGEST_CRC32C:
+            {
+              // Checks the value of digest_crc32 in request is correct.
+              if (!request.getDigestCrc32C().equals(REQUEST_DIGEST_CRC32C)) {
+                throw new GeneralSecurityException("digest_crc32 is incorrect");
+              }
+              signature = digestSigner.sign(request.getDigest().getSha256().toByteArray());
+              signatureCrc32c = Hashing.crc32c().hashBytes(signature).padToLong();
+              builder
+                  .setVerifiedDigestCrc32C(true)
+                  .setSignature(ByteString.copyFrom(signature))
+                  .setSignatureCrc32C(Int64Value.of(signatureCrc32c));
+              break;
+            }
           case KEY_NAME_FOR_EXCEPTION:
             throw new GeneralSecurityException("testing exception.");
           default:
@@ -177,6 +195,7 @@ public final class GcpKmsPublicKeySignTest {
               .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_2048_SHA256);
           break;
         case KEY_NAME_FOR_DIGEST:
+        case KEY_NAME_FOR_REQUEST_DIGEST_CRC32C:
           builder
               .setProtectionLevel(ProtectionLevel.SOFTWARE)
               .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.EC_SIGN_P256_SHA256);
@@ -400,5 +419,25 @@ public final class GcpKmsPublicKeySignTest {
         GeneralSecurityException.class, () -> digestVerifier.verify(kmsSignature1, digest2));
     assertThrows(
         GeneralSecurityException.class, () -> digestVerifier.verify(kmsSignature2, digest1));
+  }
+
+  @Test
+  public void asymmetricSignHasCorrectDigestCrc32c() throws Exception {
+    PublicKeySign kmsSigner =
+        GcpKmsPublicKeySign.builder()
+            .setKeyName(KEY_NAME_FOR_REQUEST_DIGEST_CRC32C)
+            .setKeyManagementServiceClient(kmsClient)
+            .build();
+
+    byte[] kmsSignature = kmsSigner.sign(DATA_FOR_SIGN);
+    MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
+    Digest.Builder digestBuilder = Digest.newBuilder();
+    byte[] digest =
+        digestBuilder
+            .setSha256(ByteString.copyFrom(messageDigest.digest(DATA_FOR_SIGN)))
+            .build()
+            .getSha256()
+            .toByteArray();
+    digestVerifier.verify(kmsSignature, digest);
   }
 }
