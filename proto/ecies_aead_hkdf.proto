@@ -105,7 +105,10 @@ message EciesAeadHkdfPrivateKey {
   EciesAeadHkdfPublicKey public_key = 2;
 
   // Required.
-  bytes key_value = 3 [ctype = STRING_PIECE];  // Big integer in bigendian representation.
+  bytes key_value = 3 [
+    ctype = STRING_PIECE,
+    debug_redact = true
+  ];  // Big integer in bigendian representation.
 }
 
 message EciesAeadHkdfKeyFormat {
