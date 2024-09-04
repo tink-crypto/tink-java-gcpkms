@@ -34,6 +34,7 @@ import com.google.cloud.kms.v1.KeyManagementServiceSettings;
 import com.google.common.hash.Hashing;
 import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.KeysetHandle;
+import com.google.crypto.tink.RegistryConfiguration;
 import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.aead.PredefinedAeadParameters;
 import com.google.protobuf.ByteString;
@@ -84,7 +85,7 @@ public final class GcpKmsAeadTest {
     private static final Aead createAead() {
       try {
         return KeysetHandle.generateNew(PredefinedAeadParameters.AES256_GCM)
-            .getPrimitive(Aead.class);
+            .getPrimitive(RegistryConfiguration.get(), Aead.class);
       } catch (GeneralSecurityException e) {
         throw new RuntimeException(e);
       }

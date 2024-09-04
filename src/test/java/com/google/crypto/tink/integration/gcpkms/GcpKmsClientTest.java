@@ -28,6 +28,7 @@ import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.KmsClient;
 import com.google.crypto.tink.KmsClients;
 import com.google.crypto.tink.KmsClientsTestUtil;
+import com.google.crypto.tink.RegistryConfiguration;
 import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.aead.KmsAeadKeyManager;
 import com.google.crypto.tink.aead.KmsEnvelopeAead;
@@ -153,13 +154,15 @@ public final class GcpKmsClientTest {
     // getPrimitive works for keyUri
     KeyTemplate envelopeTemplate = KmsEnvelopeAeadKeyManager.createKeyTemplate(keyUri, dekTemplate);
     KeysetHandle handle = KeysetHandle.generateNew(envelopeTemplate);
-    Aead unused = handle.getPrimitive(Aead.class);
+    Aead unused = handle.getPrimitive(RegistryConfiguration.get(), Aead.class);
 
     // getPrimitive does not work for keyUri2
     KeyTemplate envelopeTemplate2 =
         KmsEnvelopeAeadKeyManager.createKeyTemplate(keyUri2, dekTemplate);
     KeysetHandle handle2 = KeysetHandle.generateNew(envelopeTemplate2);
-    assertThrows(GeneralSecurityException.class, () -> handle2.getPrimitive(Aead.class));
+    assertThrows(
+        GeneralSecurityException.class,
+        () -> handle2.getPrimitive(RegistryConfiguration.get(), Aead.class));
   }
 
   @Test
@@ -180,14 +183,14 @@ public final class GcpKmsClientTest {
 
     KeyTemplate kmsTemplate = KmsAeadKeyManager.createKeyTemplate(keyUri);
     KeysetHandle handle = KeysetHandle.generateNew(kmsTemplate);
-    Aead kmsAead = handle.getPrimitive(Aead.class);
+    Aead kmsAead = handle.getPrimitive(RegistryConfiguration.get(), Aead.class);
     byte[] ciphertext = kmsAead.encrypt(plaintext, associatedData);
     byte[] decrypted = kmsAead.decrypt(ciphertext, associatedData);
     assertThat(decrypted).isEqualTo(plaintext);
 
     KeyTemplate kmsTemplate2 = KmsAeadKeyManager.createKeyTemplate(keyUri2);
     KeysetHandle handle2 = KeysetHandle.generateNew(kmsTemplate2);
-    Aead kmsAead2 = handle2.getPrimitive(Aead.class);
+    Aead kmsAead2 = handle2.getPrimitive(RegistryConfiguration.get(), Aead.class);
     byte[] ciphertext2 = kmsAead2.encrypt(plaintext, associatedData);
     byte[] decrypted2 = kmsAead2.decrypt(ciphertext2, associatedData);
     assertThat(decrypted2).isEqualTo(plaintext);
