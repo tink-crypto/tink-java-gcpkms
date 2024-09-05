@@ -28,6 +28,7 @@ import com.google.common.hash.Hashing;
 import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.KeyTemplates;
 import com.google.crypto.tink.KeysetHandle;
+import com.google.crypto.tink.RegistryConfiguration;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -55,7 +56,9 @@ final class FakeCloudKms extends CloudKMS {
         new GsonFactory(),
         new GoogleCredential());
     for (String keyId : validKeyIds) {
-      Aead aead = KeysetHandle.generateNew(KeyTemplates.get("AES128_GCM")).getPrimitive(Aead.class);
+      Aead aead =
+          KeysetHandle.generateNew(KeyTemplates.get("AES128_GCM"))
+              .getPrimitive(RegistryConfiguration.get(), Aead.class);
       aeads.put(keyId, aead);
     }
   }
