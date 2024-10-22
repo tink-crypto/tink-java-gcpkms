@@ -36,8 +36,8 @@ This envelope encryption example uses a Cloud KMS key as a key-encryption key
 ### Bazel
 
 ```shell
-git clone https://github.com/google/tink
-cd tink/examples/java_src
+git clone https://github.com/tink-crypto/tink-java
+cd examples
 bazel build ...
 ```
 

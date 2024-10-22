@@ -22,8 +22,8 @@ In order to run this example, you need to:
 ### Bazel
 
 ```shell
-git clone https://github.com/google/tink
-cd tink/examples/java_src
+git clone https://github.com/tink-crypto/tink-java
+cd examples
 bazel build ...
 ```
 
