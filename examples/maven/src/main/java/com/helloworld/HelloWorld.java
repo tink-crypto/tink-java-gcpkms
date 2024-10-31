@@ -19,6 +19,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.KmsClient;
+import com.google.crypto.tink.RegistryConfiguration;
 import com.google.crypto.tink.TinkJsonProtoKeysetFormat;
 import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.aead.PredefinedAeadParameters;
@@ -88,7 +89,7 @@ public final class HelloWorld {
     createAndWriteEncryptedKeyset(keysetPath, keysetEncryptionAead);
 
     KeysetHandle keysetHandle = readEncryptedKeyset(keysetPath, keysetEncryptionAead);
-    Aead aead = keysetHandle.getPrimitive(Aead.class);
+    Aead aead = keysetHandle.getPrimitive(RegistryConfiguration.get(), Aead.class);
 
     byte[] ciphertext = aead.encrypt(plaintext, associatedData);
     byte[] decrypted = aead.decrypt(ciphertext, associatedData);
