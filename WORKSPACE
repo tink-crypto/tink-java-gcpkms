@@ -30,7 +30,7 @@ maven_install(
                 "io.grpc:grpc-util",
             ],
             group = "io.grpc",
-            version = "1.62.2",
+            version = "1.70.0",
         ),
     ],
     repositories = [

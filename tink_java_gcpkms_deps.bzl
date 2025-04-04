@@ -13,26 +13,26 @@ TINK_JAVA_GCPKMS_MAVEN_TOOLS_ARTIFACTS = [
     "org.pantsbuild:jarjar:1.7.2",
 ]
 
-_GRPC_VERSION = "1.62.2"
+_GRPC_VERSION = "1.70.0"
 
 TINK_JAVA_GCPKMS_MAVEN_ARTIFACTS = [
-    "com.google.api.grpc:grpc-google-cloud-kms-v1:0.139.0",
-    "com.google.api.grpc:proto-google-cloud-kms-v1:0.139.0",
-    "com.google.api-client:google-api-client:2.2.0",
-    "com.google.apis:google-api-services-cloudkms:v1-rev20221107-2.0.0",
-    "com.google.auth:google-auth-library-oauth2-http:1.23.0",
+    "com.google.api.grpc:grpc-google-cloud-kms-v1:0.154.0",
+    "com.google.api.grpc:proto-google-cloud-kms-v1:0.154.0",
+    "com.google.api-client:google-api-client:2.7.2",
+    "com.google.apis:google-api-services-cloudkms:v1-rev20241111-2.0.0",
+    "com.google.auth:google-auth-library-oauth2-http:1.33.1",
     "com.google.auto.service:auto-service-annotations:1.1.1",
     "com.google.auto.service:auto-service:1.1.1",
     "com.google.auto:auto-common:1.2.2",
-    "com.google.cloud:google-cloud-kms:2.48.0",
+    "com.google.cloud:google-cloud-kms:2.63.0",
     "com.google.code.findbugs:jsr305:3.0.2",
-    "com.google.errorprone:error_prone_annotations:2.28.0",
+    "com.google.errorprone:error_prone_annotations:2.36.0",
     # This is needed because of computing CRC32C checksums that's not available in java natively.
-    "com.google.guava:guava:33.2.1-jre",
-    "com.google.http-client:google-http-client-gson:1.44.2",
-    "com.google.http-client:google-http-client:1.44.2",
-    "com.google.oauth-client:google-oauth-client:1.34.1",
-    "com.google.protobuf:protobuf-java:3.25.3",
+    "com.google.guava:guava:33.4.0-jre",
+    "com.google.http-client:google-http-client-gson:1.46.3",
+    "com.google.http-client:google-http-client:1.46.3",
+    "com.google.oauth-client:google-oauth-client:1.39.0",
+    "com.google.protobuf:protobuf-java:3.25.5",
     "io.grpc:grpc-api:%s" % _GRPC_VERSION,
     "io.grpc:grpc-inprocess:%s" % _GRPC_VERSION,
     "io.grpc:grpc-stub:%s" % _GRPC_VERSION,
