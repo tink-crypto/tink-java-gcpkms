@@ -3,13 +3,13 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 TINK_JAVA_GCPKMS_MAVEN_TEST_ARTIFACTS = [
-    "com.google.truth:truth:0.44",
-    "junit:junit:4.13.2",
+    "com.google.truth:truth:1.4.4",
+    "org.junit.jupiter:junit-jupiter-api:5.11.3",
 ]
 
 TINK_JAVA_GCPKMS_MAVEN_TOOLS_ARTIFACTS = [
-    "org.ow2.asm:asm-commons:7.0",
-    "org.ow2.asm:asm:7.0",
+    "org.ow2.asm:asm-commons:9.7.1",
+    "org.ow2.asm:asm:9.7.1",
     "org.pantsbuild:jarjar:1.7.2",
 ]
 
@@ -54,10 +54,10 @@ def tink_java_gcpkms_deps():
         )
 
     if not native.existing_rule("tink_java"):
-        # Release from 2024-08-06.
+        # Release from 2024-08-30.
         http_archive(
             name = "tink_java",
-            urls = ["https://github.com/tink-crypto/tink-java/releases/download/v1.14.1/tink-java-1.14.1.zip"],
-            strip_prefix = "tink-java-1.14.1",
-            sha256 = "1f8a2df8fcbfc9b19fba0d5f58cdcc12021cb33cdc307d22d840b437fd17347c",
+            urls = ["https://github.com/tink-crypto/tink-java/releases/download/v1.15.0/tink-java-1.15.0.zip"],
+            strip_prefix = "tink-java-1.15.0",
+            sha256 = "e246f848f7749e37f558955ecb50345b04d79ddb9d8d1e8ae19f61e8de530582",
         )
