@@ -78,8 +78,8 @@ public final class GcpKmsPublicKeySignTest {
   private static final String KEY_NAME_FOR_REQUEST_DIGEST_CRC32C =
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/9";
   private static final String KEY_PEM = "PEM";
-  private static final byte[] DATA_FOR_SIGN = "data for signing".getBytes(UTF_8);
-  // The value of digest_crc32c for DATA_FOR_SIGN
+  private static final byte[] dataForSign = "data for signing".getBytes(UTF_8);
+  // The value of digest_crc32c for dataForSign
   private static final Int64Value REQUEST_DIGEST_CRC32C = Int64Value.of(62061691L);
 
   private PublicKeySign dataSigner;
@@ -302,7 +302,7 @@ public final class GcpKmsPublicKeySignTest {
             .setKeyName(KEY_NAME_FOR_NO_VERIFIED_CRC32C)
             .setKeyManagementServiceClient(kmsClient)
             .build();
-    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(DATA_FOR_SIGN));
+    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(dataForSign));
   }
 
   @Test
@@ -312,7 +312,7 @@ public final class GcpKmsPublicKeySignTest {
             .setKeyName(KEY_NAME_FOR_SIGNATURE_MISMATCH)
             .setKeyManagementServiceClient(kmsClient)
             .build();
-    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(DATA_FOR_SIGN));
+    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(dataForSign));
   }
 
   @Test
@@ -322,7 +322,7 @@ public final class GcpKmsPublicKeySignTest {
             .setKeyName(KEY_NAME_FOR_KEY_NAME_MISMATCH)
             .setKeyManagementServiceClient(kmsClient)
             .build();
-    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(DATA_FOR_SIGN));
+    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(dataForSign));
   }
 
   @Test
@@ -332,7 +332,7 @@ public final class GcpKmsPublicKeySignTest {
             .setKeyName(KEY_NAME_FOR_EXCEPTION)
             .setKeyManagementServiceClient(kmsClient)
             .build();
-    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(DATA_FOR_SIGN));
+    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(dataForSign));
   }
 
   @Test
@@ -342,7 +342,7 @@ public final class GcpKmsPublicKeySignTest {
             .setKeyName(KEY_NAME_FOR_INVALID_ALGORITHM)
             .setKeyManagementServiceClient(kmsClient)
             .build();
-    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(DATA_FOR_SIGN));
+    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(dataForSign));
   }
 
   @Test
@@ -353,9 +353,9 @@ public final class GcpKmsPublicKeySignTest {
             .setKeyManagementServiceClient(kmsClient)
             .build();
 
-    byte[] signature = dataSigner.sign(DATA_FOR_SIGN);
-    byte[] kmsSignature = kmsSigner.sign(DATA_FOR_SIGN);
-    dataVerifier.verify(kmsSignature, DATA_FOR_SIGN);
+    byte[] signature = dataSigner.sign(dataForSign);
+    byte[] kmsSignature = kmsSigner.sign(dataForSign);
+    dataVerifier.verify(kmsSignature, dataForSign);
     // ED25519 is deterministic, check that signatures are the same.
     assertThat(kmsSignature).isEqualTo(signature);
   }
@@ -429,12 +429,12 @@ public final class GcpKmsPublicKeySignTest {
             .setKeyManagementServiceClient(kmsClient)
             .build();
 
-    byte[] kmsSignature = kmsSigner.sign(DATA_FOR_SIGN);
+    byte[] kmsSignature = kmsSigner.sign(dataForSign);
     MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
     Digest.Builder digestBuilder = Digest.newBuilder();
     byte[] digest =
         digestBuilder
-            .setSha256(ByteString.copyFrom(messageDigest.digest(DATA_FOR_SIGN)))
+            .setSha256(ByteString.copyFrom(messageDigest.digest(dataForSign)))
             .build()
             .getSha256()
             .toByteArray();
