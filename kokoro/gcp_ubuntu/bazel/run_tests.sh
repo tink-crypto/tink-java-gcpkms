@@ -58,5 +58,5 @@ if [[ -n "${KOKORO_ROOT:-}" ]]; then
 fi
 readonly TEST_SCRIPT_ARGS
 
-./kokoro/testutils/run_command.sh "${RUN_COMMAND_ARGS[@]}" \
+./kokoro/testutils/docker_execute.sh "${RUN_COMMAND_ARGS[@]}" \
   ./kokoro/gcp_ubuntu/bazel/test_script.sh "${TEST_SCRIPT_ARGS[@]}"
