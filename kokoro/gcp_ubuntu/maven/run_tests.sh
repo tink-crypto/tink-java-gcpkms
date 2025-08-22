@@ -25,6 +25,12 @@
 #
 #   CONTAINER_IMAGE="us-docker.pkg.dev/tink-test-infrastructure/tink-ci-images/linux-tink-java-base:latest" \
 #     sh ./kokoro/gcp_ubuntu/maven/run_tests.sh
+
+# Generated with openssl rand -hex 10
+echo "==========================================================================="
+echo "Tink Script ID: acd1a16a598615a95a93 (to quickly find the script from logs)"
+echo "==========================================================================="
+
 set -eEuo pipefail
 
 readonly GITHUB_ORG="https://github.com/tink-crypto"
