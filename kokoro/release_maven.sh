@@ -53,9 +53,6 @@ readonly TINK_JAVA_GCPKMS_GITHUB_URL="github.com/tink-crypto/tink-java-gcpkms"
 readonly GITHUB_URL="${GITUB_PROTOCOL_AND_AUTH}@${TINK_JAVA_GCPKMS_GITHUB_URL}"
 
 MAVEN_DEPLOY_LIBRARY_OPTIONS=( -u "${GITHUB_URL}" )
-if [[ "${DO_MAKE_RELEASE}" == "false" ]]; then
-  MAVEN_DEPLOY_LIBRARY_OPTIONS+=( -d )
-fi
 readonly MAVEN_DEPLOY_LIBRARY_OPTIONS
 
 if [[ "${IS_KOKORO}" == "true" ]]; then
