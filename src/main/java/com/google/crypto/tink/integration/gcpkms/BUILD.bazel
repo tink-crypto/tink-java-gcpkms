@@ -30,7 +30,6 @@ java_library(
     srcs = ["GcpKmsAead.java"],
     deps = [
         "@tink_java//src/main/java/com/google/crypto/tink:aead",
-        "@com_google_protobuf//:wrappers_proto",
         "@maven//:com_google_api_grpc_proto_google_cloud_kms_v1",
         "@maven//:com_google_apis_google_api_services_cloudkms",
         "@maven//:com_google_cloud_google_cloud_kms",
@@ -46,7 +45,6 @@ java_library(
     srcs = ["GcpKmsPublicKeySign.java"],
     deps = [
         "@tink_java//src/main/java/com/google/crypto/tink:public_key_sign",
-        "@com_google_protobuf//:wrappers_proto",
         "@maven//:com_google_api_grpc_proto_google_cloud_kms_v1",
         "@maven//:com_google_cloud_google_cloud_kms",
         "@maven//:com_google_code_findbugs_jsr305",
