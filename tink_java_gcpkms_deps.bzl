@@ -53,6 +53,19 @@ def tink_java_gcpkms_deps():
             sha256 = "5156b22536feaa88cf95503153a6b2cd67cc80f20f1218f154b84a12c288a220",
         )
 
+    # MacOS Sequoia requires zlib 1.3.1, because of incompatibility with com_google_protobuf.
+    # See https://github.com/bazelbuild/bazel/issues/25124.
+    if not native.existing_rule("zlib"):
+        zlib_version = "1.3.1"
+        zlib_sha256 = "9a93b2b7dfdac77ceba5a558a580e74667dd6fede4585b91eefb60f03b72df23"
+        http_archive(
+            name = "zlib",
+            build_file = "@com_google_protobuf//:third_party/zlib.BUILD",
+            sha256 = zlib_sha256,
+            strip_prefix = "zlib-%s" % zlib_version,
+            urls = ["https://github.com/madler/zlib/releases/download/v{v}/zlib-{v}.tar.gz".format(v = zlib_version)],
+        )
+
     if not native.existing_rule("tink_java"):
         # Release from 2024-08-30.
         http_archive(
