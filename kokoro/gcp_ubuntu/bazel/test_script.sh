@@ -81,8 +81,17 @@ if [[ "${RUN_MANUAL_TESTS}" == "true" ]]; then
 fi
 readonly ADDITIONAL_MANUAL_TARGETS
 
+echo "------------------------------------------------------------------------"
+echo "Build and run unit tests only relying on WORKSPACE"
+echo "------------------------------------------------------------------------"
 ./kokoro/testutils/run_bazel_tests.sh "${CACHE_FLAGS[@]}" . \
   "${ADDITIONAL_MANUAL_TARGETS[@]}"
+
+echo "------------------------------------------------------------------------"
+echo "Build and run unit tests only relying on bzlmod"
+echo "------------------------------------------------------------------------"
+./kokoro/testutils/run_bazel_tests.sh -b "--enable_bzlmod" \
+  -t "--enable_bzlmod" "${CACHE_FLAGS[@]}" . "${ADDITIONAL_MANUAL_TARGETS[@]}"
 
 # Build and run examples.
 ADDITIONAL_EXAMPLES_MANUAL_TARGETS=()
@@ -95,5 +104,15 @@ if [[ "${RUN_MANUAL_TESTS}" == "true" ]]; then
 fi
 readonly ADDITIONAL_EXAMPLES_MANUAL_TARGETS
 
+echo "------------------------------------------------------------------------"
+echo "Build and run examples only relying on WORKSPACE"
+echo "------------------------------------------------------------------------"
 ./kokoro/testutils/run_bazel_tests.sh "${CACHE_FLAGS[@]}" "examples" \
+  "${ADDITIONAL_EXAMPLES_MANUAL_TARGETS[@]}"
+
+echo "------------------------------------------------------------------------"
+echo "Build and run examples only relying on bzlmod"
+echo "------------------------------------------------------------------------"
+./kokoro/testutils/run_bazel_tests.sh -b "--enable_bzlmod" \
+  -t "--enable_bzlmod" "${CACHE_FLAGS[@]}" "examples" \
   "${ADDITIONAL_EXAMPLES_MANUAL_TARGETS[@]}"

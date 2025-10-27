@@ -1,0 +1,60 @@
+# Copyright 2025 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+################################################################################
+
+module(name = "examples")
+
+bazel_dep(name = "bazel_skylib", version = "1.8.2")
+bazel_dep(name = "rules_java", version = "8.16.1")
+bazel_dep(name = "rules_jvm_external", version = "6.8")
+bazel_dep(name = "rules_license", version = "1.0.0")
+bazel_dep(name = "rules_android", version = "0.6.6", repo_name = "build_bazel_rules_android")
+bazel_dep(name = "platforms", version = "1.0.0")
+
+bazel_dep(name = "tink_java")
+archive_override(
+    module_name = "tink_java",
+    integrity = "sha256-KodHYV+34hNasUl6GqkqgvRiRl4gYI39UtBfM3n2850=",
+    strip_prefix = "tink-java-1.19.0",
+    urls = ["https://github.com/tink-crypto/tink-java/archive/refs/tags/v1.19.0.tar.gz"],
+)
+
+bazel_dep(name = "tink_java_gcpkms")
+local_path_override(
+    module_name = "tink_java_gcpkms",
+    path = "../",
+)
+
+maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
+
+_GRPC_VERSION = "1.70.0"
+
+maven.artifact(group = "io.grpc", artifact = "grpc-testing", version = _GRPC_VERSION, testonly = True)
+
+maven.install(
+    artifacts = [
+        # go/keep-sorted start
+        "args4j:args4j:2.33",
+        "com.google.cloud:google-cloud-storage:2.35.0",
+        # go/keep-sorted end
+    ],
+    repositories = [
+        "https://maven.google.com",
+        "https://repo1.maven.org/maven2",
+    ],
+    known_contributing_modules = ["bazel_worker_java", "protobuf", "tink_java", "tink_java_gcpkms"],
+)
+
+use_repo(maven, "maven")
