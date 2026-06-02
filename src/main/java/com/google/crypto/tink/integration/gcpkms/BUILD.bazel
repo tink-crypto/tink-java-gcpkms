@@ -54,6 +54,17 @@ java_library(
     ],
 )
 
+java_library(
+    name = "gcp_kms_mac",
+    srcs = ["GcpKmsMac.java"],
+    deps = [
+        "@tink_java//src/main/java/com/google/crypto/tink:mac",
+        "@maven//:com_google_cloud_google_cloud_kms",
+        "@maven//:com_google_code_findbugs_jsr305",
+        "@maven//:com_google_errorprone_error_prone_annotations",
+    ],
+)
+
 java_plugin(
     name = "auto_service_plugin",
     processor_class = "com.google.auto.service.processor.AutoServiceProcessor",
