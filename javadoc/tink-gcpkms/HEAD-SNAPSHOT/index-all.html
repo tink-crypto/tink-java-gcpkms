@@ -96,16 +96,20 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 </nav>
 </header>
 <main role="main">
-<div class="contentContainer"><a href="#I:B">B</a>&nbsp;<a href="#I:C">C</a>&nbsp;<a href="#I:D">D</a>&nbsp;<a href="#I:E">E</a>&nbsp;<a href="#I:G">G</a>&nbsp;<a href="#I:P">P</a>&nbsp;<a href="#I:R">R</a>&nbsp;<a href="#I:S">S</a>&nbsp;<a href="#I:W">W</a>&nbsp;<br><a href="allclasses-index.html">All&nbsp;Classes</a>&nbsp;<a href="allpackages-index.html">All&nbsp;Packages</a><a id="I:B">
+<div class="contentContainer"><a href="#I:B">B</a>&nbsp;<a href="#I:C">C</a>&nbsp;<a href="#I:D">D</a>&nbsp;<a href="#I:E">E</a>&nbsp;<a href="#I:G">G</a>&nbsp;<a href="#I:P">P</a>&nbsp;<a href="#I:R">R</a>&nbsp;<a href="#I:S">S</a>&nbsp;<a href="#I:V">V</a>&nbsp;<a href="#I:W">W</a>&nbsp;<br><a href="allclasses-index.html">All&nbsp;Classes</a>&nbsp;<a href="allpackages-index.html">All&nbsp;Packages</a><a id="I:B">
 <!--   -->
 </a>
 <h2 class="title">B</h2>
 <dl>
 <dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsAead.Builder.html#build()">build()</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsAead.Builder.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsAead.Builder</a></dt>
 <dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsMac.Builder.html#build()">build()</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsMac.Builder.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsMac.Builder</a></dt>
+<dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.Builder.html#build()">build()</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.Builder.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsPublicKeySign.Builder</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsAead.html#builder()">builder()</a></span> - Static method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsAead.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsAead</a></dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsMac.html#builder()">builder()</a></span> - Static method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsMac.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsMac</a></dt>
 <dd>&nbsp;</dd>
 <dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.html#builder()">builder()</a></span> - Static method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsPublicKeySign</a></dt>
 <dd>&nbsp;</dd>
@@ -116,6 +120,8 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <h2 class="title">C</h2>
 <dl>
 <dt><a href="com/google/crypto/tink/integration/gcpkms/package-summary.html">com.google.crypto.tink.integration.gcpkms</a> - package com.google.crypto.tink.integration.gcpkms</dt>
+<dd>&nbsp;</dd>
+<dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsMac.html#computeMac(byte%5B%5D)">computeMac(byte[])</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsMac.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsMac</a></dt>
 <dd>&nbsp;</dd>
 </dl>
 <a id="I:D">
@@ -167,6 +173,14 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Constructs a specific GcpKmsClient that is bound to a single key identified by <code>uri</code>.</div>
 </dd>
+<dt><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsMac.html" title="class in com.google.crypto.tink.integration.gcpkms"><span class="typeNameLink">GcpKmsMac</span></a> - Class in <a href="com/google/crypto/tink/integration/gcpkms/package-summary.html">com.google.crypto.tink.integration.gcpkms</a></dt>
+<dd>
+<div class="block">A <code>Mac</code> that forwards MAC computation and verification requests to a key in <a href="https://cloud.google.com/kms/">Google Cloud KMS</a> using GRPC.</div>
+</dd>
+<dt><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsMac.Builder.html" title="class in com.google.crypto.tink.integration.gcpkms"><span class="typeNameLink">GcpKmsMac.Builder</span></a> - Class in <a href="com/google/crypto/tink/integration/gcpkms/package-summary.html">com.google.crypto.tink.integration.gcpkms</a></dt>
+<dd>
+<div class="block">A Builder to create a <code>Mac</code> that communicates with Cloud KMS via gRPC.</div>
+</dd>
 <dt><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.html" title="class in com.google.crypto.tink.integration.gcpkms"><span class="typeNameLink">GcpKmsPublicKeySign</span></a> - Class in <a href="com/google/crypto/tink/integration/gcpkms/package-summary.html">com.google.crypto.tink.integration.gcpkms</a></dt>
 <dd>
 <div class="block">A <code>PublicKeySign</code> that forwards asymmetric sign requests to a key in <a href="https://cloud.google.com/kms/">Google Cloud KMS</a> using GRPC.</div>
@@ -211,6 +225,10 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Set the KeyManagementServiceClient object.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsMac.Builder.html#setKeyManagementServiceClient(com.google.cloud.kms.v1.KeyManagementServiceClient)">setKeyManagementServiceClient(KeyManagementServiceClient)</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsMac.Builder.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsMac.Builder</a></dt>
+<dd>
+<div class="block">Set the KeyManagementServiceClient object.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.Builder.html#setKeyManagementServiceClient(com.google.cloud.kms.v1.KeyManagementServiceClient)">setKeyManagementServiceClient(KeyManagementServiceClient)</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.Builder.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsPublicKeySign.Builder</a></dt>
 <dd>
 <div class="block">Set the KeyManagementServiceClient object.</div>
@@ -219,11 +237,23 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <dd>
 <div class="block">Set the ResourceName of the KMS key.</div>
 </dd>
+<dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsMac.Builder.html#setKeyName(java.lang.String)">setKeyName(String)</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsMac.Builder.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsMac.Builder</a></dt>
+<dd>
+<div class="block">Set the ResourceName of the KMS key version.</div>
+</dd>
 <dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.Builder.html#setKeyName(java.lang.String)">setKeyName(String)</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.Builder.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsPublicKeySign.Builder</a></dt>
 <dd>
 <div class="block">Set the ResourceName of the KMS key.</div>
 </dd>
 <dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.html#sign(byte%5B%5D)">sign(byte[])</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsPublicKeySign.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsPublicKeySign</a></dt>
+<dd>&nbsp;</dd>
+</dl>
+<a id="I:V">
+<!--   -->
+</a>
+<h2 class="title">V</h2>
+<dl>
+<dt><span class="memberNameLink"><a href="com/google/crypto/tink/integration/gcpkms/GcpKmsMac.html#verifyMac(byte%5B%5D,byte%5B%5D)">verifyMac(byte[], byte[])</a></span> - Method in class com.google.crypto.tink.integration.gcpkms.<a href="com/google/crypto/tink/integration/gcpkms/GcpKmsMac.html" title="class in com.google.crypto.tink.integration.gcpkms">GcpKmsMac</a></dt>
 <dd>&nbsp;</dd>
 </dl>
 <a id="I:W">
@@ -249,7 +279,7 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
  default Google Cloud credentials</a>.</div>
 </dd>
 </dl>
-<a href="#I:B">B</a>&nbsp;<a href="#I:C">C</a>&nbsp;<a href="#I:D">D</a>&nbsp;<a href="#I:E">E</a>&nbsp;<a href="#I:G">G</a>&nbsp;<a href="#I:P">P</a>&nbsp;<a href="#I:R">R</a>&nbsp;<a href="#I:S">S</a>&nbsp;<a href="#I:W">W</a>&nbsp;<br><a href="allclasses-index.html">All&nbsp;Classes</a>&nbsp;<a href="allpackages-index.html">All&nbsp;Packages</a></div>
+<a href="#I:B">B</a>&nbsp;<a href="#I:C">C</a>&nbsp;<a href="#I:D">D</a>&nbsp;<a href="#I:E">E</a>&nbsp;<a href="#I:G">G</a>&nbsp;<a href="#I:P">P</a>&nbsp;<a href="#I:R">R</a>&nbsp;<a href="#I:S">S</a>&nbsp;<a href="#I:V">V</a>&nbsp;<a href="#I:W">W</a>&nbsp;<br><a href="allclasses-index.html">All&nbsp;Classes</a>&nbsp;<a href="allpackages-index.html">All&nbsp;Packages</a></div>
 </main>
 <footer role="contentinfo">
 <nav role="navigation">
