@@ -142,7 +142,9 @@ $('.navPadding').css('padding-top', $('.fixedNav').css("height"));
 <pre>public final class <span class="typeNameLabel">GcpKmsMac</span>
 extends java.lang.Object
 implements com.google.crypto.tink.Mac</pre>
-<div class="block">A <code>Mac</code> that forwards MAC computation and verification requests to a key in <a href="https://cloud.google.com/kms/">Google Cloud KMS</a> using GRPC.</div>
+<div class="block">A <code>Mac</code> that forwards MAC computation and verification requests to a key in <a href="https://cloud.google.com/kms/">Google Cloud KMS</a> using GRPC.
+
+ <p>Note that this MAC uses Cloud KMS as a crypto oracle for each operation.</div>
 </li>
 </ul>
 </div>
@@ -234,10 +236,13 @@ implements com.google.crypto.tink.Mac</pre>
 <ul class="blockList">
 <li class="blockList">
 <h4>computeMac</h4>
-<pre class="methodSignature">public&nbsp;byte[]&nbsp;computeMac&#8203;(byte[]&nbsp;data)</pre>
+<pre class="methodSignature">public&nbsp;byte[]&nbsp;computeMac&#8203;(byte[]&nbsp;data)
+                  throws java.security.GeneralSecurityException</pre>
 <dl>
 <dt><span class="overrideSpecifyLabel">Specified by:</span></dt>
 <dd><code>computeMac</code>&nbsp;in interface&nbsp;<code>com.google.crypto.tink.Mac</code></dd>
+<dt><span class="throwsLabel">Throws:</span></dt>
+<dd><code>java.security.GeneralSecurityException</code></dd>
 </dl>
 </li>
 </ul>
