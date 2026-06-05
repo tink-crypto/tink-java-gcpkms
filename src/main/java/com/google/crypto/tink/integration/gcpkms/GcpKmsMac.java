@@ -17,8 +17,13 @@
 package com.google.crypto.tink.integration.gcpkms;
 
 import com.google.cloud.kms.v1.KeyManagementServiceClient;
+import com.google.cloud.kms.v1.MacSignRequest;
+import com.google.cloud.kms.v1.MacSignResponse;
+import com.google.common.hash.Hashing;
 import com.google.crypto.tink.Mac;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.protobuf.ByteString;
+import com.google.protobuf.Int64Value;
 import java.security.GeneralSecurityException;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
@@ -26,11 +31,12 @@ import javax.annotation.Nullable;
 /**
  * A {@link Mac} that forwards MAC computation and verification requests to a key in <a
  * href="https://cloud.google.com/kms/">Google Cloud KMS</a> using GRPC.
+ *
+ * <p>Note that this MAC uses Cloud KMS as a crypto oracle for each operation.
  */
 public final class GcpKmsMac implements Mac {
 
   /** A GRPC-based client to communicate with Google Cloud KMS. */
-  @SuppressWarnings("unused")
   private final KeyManagementServiceClient kmsClient;
 
   /**
@@ -39,7 +45,6 @@ public final class GcpKmsMac implements Mac {
    * <p>Valid values have the format: projects/ * /locations/ * /keyRings/ * /cryptoKeys/ *
    * /cryptoKeyVersions/ *. See https://cloud.google.com/kms/docs/object-hierarchy.
    */
-  @SuppressWarnings("unused")
   private final String keyName;
 
   private GcpKmsMac(KeyManagementServiceClient kmsClient, String keyName) {
@@ -48,8 +53,34 @@ public final class GcpKmsMac implements Mac {
   }
 
   @Override
-  public byte[] computeMac(final byte[] data) {
-    throw new UnsupportedOperationException();
+  public byte[] computeMac(final byte[] data) throws GeneralSecurityException {
+    try {
+      MacSignRequest request =
+          MacSignRequest.newBuilder()
+              .setName(keyName)
+              .setData(ByteString.copyFrom(data))
+              .setDataCrc32C(Int64Value.of(Hashing.crc32c().hashBytes(data).padToLong()))
+              .build();
+
+      MacSignResponse response = kmsClient.macSign(request);
+
+      if (!response.getName().equals(keyName)) {
+        throw new GeneralSecurityException(
+            "The key name in the response does not match the requested key name.");
+      }
+      if (!response.getVerifiedDataCrc32C()) {
+        throw new GeneralSecurityException("Checking the input checksum failed.");
+      }
+      long macCrc32c =
+          Hashing.crc32c().hashBytes(response.getMac().asReadOnlyByteBuffer()).padToLong();
+      if (macCrc32c != response.getMacCrc32C().getValue()) {
+        throw new GeneralSecurityException("MAC checksum mismatch.");
+      }
+
+      return response.getMac().toByteArray();
+    } catch (RuntimeException e) {
+      throw new GeneralSecurityException("GCP KMS MacSign failed.", e);
+    }
   }
 
   @Override
