@@ -81,7 +81,7 @@ public final class GcpKmsMacTest {
   /** This rule manages automatic graceful shutdown for the registered servers and channels. */
   @Rule public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
 
-  private byte[] macData = "data".getBytes(UTF_8);
+  private final byte[] macData = "data".getBytes(UTF_8);
   private Mac backingMac;
   private KeyManagementServiceClient kmsClient;
 
@@ -284,6 +284,18 @@ public final class GcpKmsMacTest {
     assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.computeMac(macData));
   }
 
+  @Test
+  public void computeMac_dataTooLarge_fails() throws GeneralSecurityException {
+    Mac gcpKmsMac =
+        GcpKmsMac.builder().setKeyName(KEY_NAME).setKeyManagementServiceClient(kmsClient).build();
+
+    byte[] largeData = new byte[GcpKmsMac.MAX_MAC_DATA_SIZE + 1];
+
+    GeneralSecurityException e =
+        assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.computeMac(largeData));
+    assertThat(e).hasMessageThat().contains("larger than the allowed size");
+  }
+
   // --- verifyMac error tests ---
 
   @Test
@@ -349,6 +361,30 @@ public final class GcpKmsMacTest {
     byte[] mac = gcpKmsMac.computeMac(macData);
 
     assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.verifyMac(mac, macData));
+  }
+
+  @Test
+  public void verifyMac_dataTooLarge_fails() throws GeneralSecurityException {
+    Mac gcpKmsMac =
+        GcpKmsMac.builder().setKeyName(KEY_NAME).setKeyManagementServiceClient(kmsClient).build();
+
+    byte[] largeData = new byte[GcpKmsMac.MAX_MAC_DATA_SIZE + 1];
+
+    GeneralSecurityException e =
+        assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.verifyMac(macData, largeData));
+    assertThat(e).hasMessageThat().contains("larger than the allowed size");
+  }
+
+  @Test
+  public void verifyMac_macTooLarge_fails() throws GeneralSecurityException {
+    Mac gcpKmsMac =
+        GcpKmsMac.builder().setKeyName(KEY_NAME).setKeyManagementServiceClient(kmsClient).build();
+
+    byte[] largeMac = new byte[GcpKmsMac.MAX_MAC_VALUE_SIZE + 1];
+
+    GeneralSecurityException e =
+        assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.verifyMac(largeMac, macData));
+    assertThat(e).hasMessageThat().contains("larger than the allowed size");
   }
 
   // --- computeMac and verifyMac success and failure tests ---

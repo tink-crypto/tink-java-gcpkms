@@ -38,6 +38,12 @@ import javax.annotation.Nullable;
  */
 public final class GcpKmsMac implements Mac {
 
+  /** Maximum size of the data that can be used for MAC computation/verification. */
+  static final int MAX_MAC_DATA_SIZE = 64 * 1024;
+
+  /** Maximum size of the MAC that can be verified. */
+  static final int MAX_MAC_VALUE_SIZE = 64;
+
   /** A GRPC-based client to communicate with Google Cloud KMS. */
   private final KeyManagementServiceClient kmsClient;
 
@@ -56,6 +62,10 @@ public final class GcpKmsMac implements Mac {
 
   @Override
   public byte[] computeMac(final byte[] data) throws GeneralSecurityException {
+    if (data.length > MAX_MAC_DATA_SIZE) {
+      throw new GeneralSecurityException(
+          "The data size is larger than the allowed size: " + MAX_MAC_DATA_SIZE);
+    }
     try {
       MacSignRequest request =
           MacSignRequest.newBuilder()
@@ -87,6 +97,14 @@ public final class GcpKmsMac implements Mac {
 
   @Override
   public void verifyMac(final byte[] mac, final byte[] data) throws GeneralSecurityException {
+    if (data.length > MAX_MAC_DATA_SIZE) {
+      throw new GeneralSecurityException(
+          "The data size is larger than the allowed size: " + MAX_MAC_DATA_SIZE);
+    }
+    if (mac.length > MAX_MAC_VALUE_SIZE) {
+      throw new GeneralSecurityException(
+          "The MAC size is larger than the allowed size: " + MAX_MAC_VALUE_SIZE);
+    }
     try {
       MacVerifyRequest request =
           MacVerifyRequest.newBuilder()
