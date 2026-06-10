@@ -65,13 +65,23 @@ public final class GcpKmsMacTest {
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/4";
   private static final String KEY_NAME_FOR_KEY_NAME_MISMATCH_SIGN =
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/5";
+  private static final String KEY_NAME_FOR_RPC_ERROR_VERIFY =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/6";
+  private static final String KEY_NAME_FOR_VERIFY_DATA_CRC32C_NOT_VERIFIED =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/7";
+  private static final String KEY_NAME_FOR_VERIFY_MAC_CRC32C_NOT_VERIFIED =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/8";
+  private static final String KEY_NAME_FOR_VERIFY_SUCCESS_INTEGRITY_NOT_VERIFIED =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/9";
+  private static final String KEY_NAME_FOR_KEY_NAME_MISMATCH_VERIFY =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/10";
   private static final String KEY_NAME_WRONG_FORMAT =
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions";
-  private static final String DATA = "data";
 
   /** This rule manages automatic graceful shutdown for the registered servers and channels. */
   @Rule public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
 
+  private byte[] macData = "data".getBytes(UTF_8);
   private Mac backingMac;
   private KeyManagementServiceClient kmsClient;
 
@@ -115,7 +125,45 @@ public final class GcpKmsMacTest {
     @Override
     public void macVerify(
         MacVerifyRequest request, StreamObserver<MacVerifyResponse> responseObserver) {
-      throw new UnsupportedOperationException();
+      try {
+        if (request.getName().equals(KEY_NAME_FOR_RPC_ERROR_VERIFY)) {
+          throw new GeneralSecurityException("testing RPC error for macVerify.");
+        }
+
+        boolean success;
+        try {
+          backingMac.verifyMac(request.getMac().toByteArray(), request.getData().toByteArray());
+          success = true;
+        } catch (GeneralSecurityException e) {
+          success = false;
+        }
+
+        MacVerifyResponse.Builder builder =
+            MacVerifyResponse.newBuilder()
+                .setName(request.getName())
+                .setSuccess(success)
+                .setVerifiedDataCrc32C(true)
+                .setVerifiedMacCrc32C(true)
+                .setVerifiedSuccessIntegrity(success);
+
+        if (request.getName().equals(KEY_NAME_FOR_VERIFY_DATA_CRC32C_NOT_VERIFIED)) {
+          builder.setVerifiedDataCrc32C(false);
+        }
+        if (request.getName().equals(KEY_NAME_FOR_VERIFY_MAC_CRC32C_NOT_VERIFIED)) {
+          builder.setVerifiedMacCrc32C(false);
+        }
+        if (request.getName().equals(KEY_NAME_FOR_VERIFY_SUCCESS_INTEGRITY_NOT_VERIFIED)) {
+          builder.setVerifiedSuccessIntegrity(!success);
+        }
+        if (request.getName().equals(KEY_NAME_FOR_KEY_NAME_MISMATCH_VERIFY)) {
+          builder.setName(KEY_NAME);
+        }
+
+        responseObserver.onNext(builder.build());
+        responseObserver.onCompleted();
+      } catch (GeneralSecurityException e) {
+        responseObserver.onError(e);
+      }
     }
   }
 
@@ -200,7 +248,7 @@ public final class GcpKmsMacTest {
             .setKeyManagementServiceClient(kmsClient)
             .build();
 
-    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.computeMac(DATA.getBytes(UTF_8)));
+    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.computeMac(macData));
   }
 
   @Test
@@ -211,7 +259,7 @@ public final class GcpKmsMacTest {
             .setKeyManagementServiceClient(kmsClient)
             .build();
 
-    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.computeMac(DATA.getBytes(UTF_8)));
+    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.computeMac(macData));
   }
 
   @Test
@@ -222,7 +270,7 @@ public final class GcpKmsMacTest {
             .setKeyManagementServiceClient(kmsClient)
             .build();
 
-    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.computeMac(DATA.getBytes(UTF_8)));
+    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.computeMac(macData));
   }
 
   @Test
@@ -233,21 +281,108 @@ public final class GcpKmsMacTest {
             .setKeyManagementServiceClient(kmsClient)
             .build();
 
-    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.computeMac(DATA.getBytes(UTF_8)));
+    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.computeMac(macData));
   }
 
-  // --- computeMac success test ---
+  // --- verifyMac error tests ---
 
   @Test
-  public void computeMac_success() throws GeneralSecurityException {
+  public void verifyMac_macVerifyRpcFails_throws() throws GeneralSecurityException {
+    Mac gcpKmsMac =
+        GcpKmsMac.builder()
+            .setKeyName(KEY_NAME_FOR_RPC_ERROR_VERIFY)
+            .setKeyManagementServiceClient(kmsClient)
+            .build();
+
+    byte[] mac = gcpKmsMac.computeMac(macData);
+
+    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.verifyMac(mac, macData));
+  }
+
+  @Test
+  public void verifyMac_dataCrc32cNotVerified_throws() throws GeneralSecurityException {
+    Mac gcpKmsMac =
+        GcpKmsMac.builder()
+            .setKeyName(KEY_NAME_FOR_VERIFY_DATA_CRC32C_NOT_VERIFIED)
+            .setKeyManagementServiceClient(kmsClient)
+            .build();
+
+    byte[] mac = gcpKmsMac.computeMac(macData);
+
+    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.verifyMac(mac, macData));
+  }
+
+  @Test
+  public void verifyMac_macCrc32cNotVerified_throws() throws GeneralSecurityException {
+    Mac gcpKmsMac =
+        GcpKmsMac.builder()
+            .setKeyName(KEY_NAME_FOR_VERIFY_MAC_CRC32C_NOT_VERIFIED)
+            .setKeyManagementServiceClient(kmsClient)
+            .build();
+
+    byte[] mac = gcpKmsMac.computeMac(macData);
+
+    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.verifyMac(mac, macData));
+  }
+
+  @Test
+  public void verifyMac_successIntegrityNotVerified_throws() throws GeneralSecurityException {
+    Mac gcpKmsMac =
+        GcpKmsMac.builder()
+            .setKeyName(KEY_NAME_FOR_VERIFY_SUCCESS_INTEGRITY_NOT_VERIFIED)
+            .setKeyManagementServiceClient(kmsClient)
+            .build();
+
+    byte[] mac = gcpKmsMac.computeMac(macData);
+
+    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.verifyMac(mac, macData));
+  }
+
+  @Test
+  public void verifyMac_keyNameMismatch_throws() throws GeneralSecurityException {
+    Mac gcpKmsMac =
+        GcpKmsMac.builder()
+            .setKeyName(KEY_NAME_FOR_KEY_NAME_MISMATCH_VERIFY)
+            .setKeyManagementServiceClient(kmsClient)
+            .build();
+
+    byte[] mac = gcpKmsMac.computeMac(macData);
+
+    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.verifyMac(mac, macData));
+  }
+
+  // --- computeMac and verifyMac success and failure tests ---
+
+  @Test
+  public void computeAndVerifyMac_success() throws GeneralSecurityException {
     Mac gcpKmsMac =
         GcpKmsMac.builder().setKeyName(KEY_NAME).setKeyManagementServiceClient(kmsClient).build();
 
-    byte[] data = DATA.getBytes(UTF_8);
-    byte[] mac = gcpKmsMac.computeMac(data);
+    byte[] mac = gcpKmsMac.computeMac(macData);
+    gcpKmsMac.verifyMac(mac, macData); // Must not throw.
 
     // HMAC is deterministic: the result must match the backing MAC directly.
-    assertThat(mac).isEqualTo(backingMac.computeMac(data));
+    assertThat(mac).isEqualTo(backingMac.computeMac(macData));
   }
 
+  @Test
+  public void verifyMac_wrongData_fails() throws GeneralSecurityException {
+    Mac gcpKmsMac =
+        GcpKmsMac.builder().setKeyName(KEY_NAME).setKeyManagementServiceClient(kmsClient).build();
+
+    byte[] wrongData = "wrong data for mac".getBytes(UTF_8);
+    byte[] mac = gcpKmsMac.computeMac(macData);
+
+    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.verifyMac(mac, wrongData));
+  }
+
+  @Test
+  public void verifyMac_wrongMac_fails() throws GeneralSecurityException {
+    Mac gcpKmsMac =
+        GcpKmsMac.builder().setKeyName(KEY_NAME).setKeyManagementServiceClient(kmsClient).build();
+
+    byte[] wrongMac = "this is not a valid mac".getBytes(UTF_8);
+
+    assertThrows(GeneralSecurityException.class, () -> gcpKmsMac.verifyMac(wrongMac, macData));
+  }
 }

@@ -19,6 +19,8 @@ package com.google.crypto.tink.integration.gcpkms;
 import com.google.cloud.kms.v1.KeyManagementServiceClient;
 import com.google.cloud.kms.v1.MacSignRequest;
 import com.google.cloud.kms.v1.MacSignResponse;
+import com.google.cloud.kms.v1.MacVerifyRequest;
+import com.google.cloud.kms.v1.MacVerifyResponse;
 import com.google.common.hash.Hashing;
 import com.google.crypto.tink.Mac;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
@@ -84,8 +86,38 @@ public final class GcpKmsMac implements Mac {
   }
 
   @Override
-  public void verifyMac(final byte[] mac, final byte[] data) {
-    throw new UnsupportedOperationException();
+  public void verifyMac(final byte[] mac, final byte[] data) throws GeneralSecurityException {
+    try {
+      MacVerifyRequest request =
+          MacVerifyRequest.newBuilder()
+              .setName(keyName)
+              .setData(ByteString.copyFrom(data))
+              .setDataCrc32C(Int64Value.of(Hashing.crc32c().hashBytes(data).padToLong()))
+              .setMac(ByteString.copyFrom(mac))
+              .setMacCrc32C(Int64Value.of(Hashing.crc32c().hashBytes(mac).padToLong()))
+              .build();
+
+      MacVerifyResponse response = kmsClient.macVerify(request);
+
+      if (!response.getName().equals(keyName)) {
+        throw new GeneralSecurityException(
+            "The key name in the response does not match the requested key name.");
+      }
+      if (!response.getVerifiedDataCrc32C()) {
+        throw new GeneralSecurityException("Checking the input data checksum failed.");
+      }
+      if (!response.getVerifiedMacCrc32C()) {
+        throw new GeneralSecurityException("Checking the MAC checksum failed.");
+      }
+      if (!response.getSuccess()) {
+        throw new GeneralSecurityException("MAC verification failed.");
+      }
+      if (response.getVerifiedSuccessIntegrity() != response.getSuccess()) {
+        throw new GeneralSecurityException("Checking the verification result integrity failed.");
+      }
+    } catch (RuntimeException e) {
+      throw new GeneralSecurityException("GCP KMS MacVerify failed.", e);
+    }
   }
 
   /** A Builder to create a {@link Mac} that communicates with Cloud KMS via gRPC. */
