@@ -14,7 +14,7 @@
 #
 ################################################################################
 
-module(name = "tink_java_gcpkms", version = "1.10.0")
+module(name = "tink_java_gcpkms", version = "1.11.0")
 
 bazel_dep(name = "bazel_skylib", version = "1.8.2")
 bazel_dep(name = "rules_java", version = "8.16.1")
