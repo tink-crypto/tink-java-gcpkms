@@ -50,7 +50,8 @@ create_build_file() {
   cat <<EOF > "${OUT_FILE}"
 # Build file for generating the tink-gcpkms Maven artifact.
 
-load("//tools:gen_maven_jar_rules.bzl", "gen_maven_jar_rules")
+load("//tools:module_version.bzl", "get_module_version")
+load("//tools:gen_maven_jar_rules.bzl", "gen_maven_jar_rules", "maven_bundle")
 
 package(default_visibility = ["//visibility:public"])
 
@@ -70,6 +71,32 @@ gen_maven_jar_rules(
     deps = [
 $(cat "${deps}" | sed 's/^/        "/' | sed 's/$/",/')
     ],
+)
+
+# Note: before building this target you need to add files with the key and pin.
+# See the documentation of maven_bundle for how to create these.
+maven_bundle(
+    name = "tink-gcpkms-snapshot-bundle",
+    gpg_pin_file = "//:gpg_test_pin.txt",
+    gpg_secret_key_file = "//:gpg_test_key.asc",
+    lib_name = "tink-gcpkms",
+    lib_version = "HEAD-SNAPSHOT",
+    maven_jar_rules_target = ":tink-gcpkms",
+    pom_template = "//maven:tink-java-apps-tink-gcpkms.pom.xml",
+    tags = ["manual"],
+)
+
+# Note: before building this target you need to add files with the key and pin.
+# See the documentation of maven_bundle for how to create these.
+maven_bundle(
+    name = "tink-gcpkms-release-bundle",
+    gpg_pin_file = "//:gpg_pin.txt",
+    gpg_secret_key_file = "//:gpg_key.asc",
+    lib_name = "tink-gcpkms",
+    lib_version = get_module_version(name = "version_label_name"),
+    maven_jar_rules_target = ":tink-gcpkms",
+    pom_template = "//maven:tink-java-apps-tink-gcpkms.pom.xml",
+    tags = ["manual"],
 )
 EOF
   buildifier "${OUT_FILE}"

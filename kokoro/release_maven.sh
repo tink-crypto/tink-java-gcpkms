@@ -16,7 +16,7 @@
 
 # Generated with openssl rand -hex 10
 echo "================================================================================"
-echo "Tink Script ID: d8c4abdeff48665d4617 (to quickly find the script from logs)"
+echo "Tink Script ID: 5c3b92b6c3f7976ab1e9 (to quickly find the script from logs)"
 echo "================================================================================"
 
 set -eEuo pipefail
@@ -27,12 +27,6 @@ if [[ -z "${RELEASE_VERSION:-}" ]]; then
   exit 1
 fi
 
-IS_KOKORO="false"
-if [[ -n "${KOKORO_ARTIFACTS_DIR:-}" ]]; then
-  IS_KOKORO="true"
-fi
-readonly IS_KOKORO
-
 # WARNING: Setting this environment varialble to "true" will cause this script
 # to actually perform a release.
 : "${DO_MAKE_RELEASE:="false"}"
@@ -42,34 +36,85 @@ if [[ ! "${DO_MAKE_RELEASE}" =~ ^(false|true)$ ]]; then
   exit 1
 fi
 
-GITUB_PROTOCOL_AND_AUTH="ssh://git"
-if [[ "${IS_KOKORO}" == "true" ]] ; then
+if [[ ! -v TINK_BASE_DIR ]] ; then
   TINK_BASE_DIR="$(echo "${KOKORO_ARTIFACTS_DIR}"/git*)"
-  cd "${TINK_BASE_DIR}/tink_java_gcpkms"
-  # GITHUB_ACCESS_TOKEN is populated by Kokoro.
-  GITUB_PROTOCOL_AND_AUTH="https://ise-crypto:${GITHUB_ACCESS_TOKEN}"
 fi
-readonly GITUB_PROTOCOL_AND_AUTH
-
-: "${TINK_BASE_DIR:=$(cd .. && pwd)}"
 readonly TINK_BASE_DIR
+echo "--- TINK_BASE_DIR is ${TINK_BASE_DIR}"
 
-readonly TINK_JAVA_GCPKMS_GITHUB_URL="github.com/tink-crypto/tink-java-gcpkms"
-readonly GITHUB_URL="${GITUB_PROTOCOL_AND_AUTH}@${TINK_JAVA_GCPKMS_GITHUB_URL}"
-
-MAVEN_DEPLOY_LIBRARY_OPTIONS=( -u "${GITHUB_URL}" )
-readonly MAVEN_DEPLOY_LIBRARY_OPTIONS
-
-if [[ "${IS_KOKORO}" == "true" ]]; then
-  # Import the PGP signing key and make the passphrase available as an env
-  # variable.
-  gpg --import --pinentry-mode loopback \
-    --passphrase-file \
-    "${KOKORO_KEYSTORE_DIR}/70968_tink_dev_maven_pgp_passphrase" \
-    --batch "${KOKORO_KEYSTORE_DIR}/70968_tink_dev_maven_pgp_secret_key"
-  export TINK_DEV_MAVEN_PGP_PASSPHRASE="$(cat \
-    "${KOKORO_KEYSTORE_DIR}/70968_tink_dev_maven_pgp_passphrase")"
+if [[ "${DO_MAKE_RELEASE}" == "true" ]] ; then
+  echo "--- COPYING PGP SIGNING KEY TO EXPECTED LOCATION"
+  cp "${KOKORO_KEYSTORE_DIR}/70968_tink_dev_maven_pgp_passphrase" \
+    "${TINK_BASE_DIR}/tink_java_gcpkms/gpg_pin.txt"
+  cp "${KOKORO_KEYSTORE_DIR}/70968_tink_dev_maven_pgp_secret_key" \
+    "${TINK_BASE_DIR}/tink_java_gcpkms/gpg_key.asc"
 fi
 
-./maven/maven_deploy_library.sh "${MAVEN_DEPLOY_LIBRARY_OPTIONS[@]}" release \
-  tink-gcpkms maven/tink-java-gcpkms.pom.xml "${RELEASE_VERSION}"
+if [[ ! -v CONTAINER_IMAGE ]] ; then
+  source \
+    "${TINK_BASE_DIR}/tink_java_gcpkms/kokoro/testutils/java_test_container_images.sh"
+  CONTAINER_IMAGE="${TINK_JAVA_BASE_IMAGE}"
+fi
+readonly CONTAINER_IMAGE
+echo "--- CONTAINER_IMAGE is ${CONTAINER_IMAGE}"
+
+cd "${TINK_BASE_DIR}/tink_java_gcpkms"
+
+if [[ -v TINK_REMOTE_BAZXEL_CACHE_GCS_BUCKET ]]; then
+  cp "${TINK_REMOTE_BAZEL_CACHE_SERVICE_KEY}" ./cache_key
+  cat <<EOF > /tmp/env_variables.txt
+BAZEL_REMOTE_CACHE_NAME=${TINK_REMOTE_BAZEL_CACHE_GCS_BUCKET}/bazel/${TINK_JAVA_BASE_IMAGE_HASH}
+EOF
+else
+  touch /tmp/env_variables.txt
+fi
+echo "--- CONTENTS OF env_variables.txt:"
+cat /tmp/env_variables.txt
+echo "--- END OF CONTENTS"
+
+if [[ ! -z "${TINK_GCR_SERVICE_KEY:-}" ]]; then
+  gcloud auth activate-service-account --key-file="${TINK_GCR_SERVICE_KEY}"
+  gcloud config set project tink-test-infrastructure
+  gcloud auth configure-docker us-docker.pkg.dev --quiet
+fi
+
+echo "-- PULLING DOCKER IMAGE"
+time docker pull "${CONTAINER_IMAGE}"
+
+echo "-- RUNNING DOCKER"
+docker run \
+  --network="host" \
+  --mount type=bind,src="${TINK_BASE_DIR}",dst=/tink_orig_dir \
+  --env-file /tmp/env_variables.txt \
+  --rm \
+  "${CONTAINER_IMAGE}" \
+  bash -c "/tink_orig_dir/tink_java_gcpkms/tools/build_maven_bundle.sh"
+
+cd "${KOKORO_ARTIFACTS_DIR}"
+mkdir -p kokoro_upload_dir/release
+cp "${TINK_BASE_DIR}"/kokoro_upload_dir/* kokoro_upload_dir/release
+
+if [[ "${DO_MAKE_RELEASE}" == "false" ]]; then
+  echo "  *** Dry run, not uploading to Maven Central Repostiory."
+  exit
+fi
+
+CREDENTIAL_WRAPPING_KEY="${KOKORO_KEYSTORE_DIR}/70968_tink_tinkey_release_wrapping_key.pb"
+
+readonly BASE64TOKENFILE="$(mktemp)"
+"${KOKORO_BLAZE_DIR}/GoTools/blaze-bin/third_party/tink/integration/go/kokorotools/hybrid_encryption" \
+  --tink_key_file="${CREDENTIAL_WRAPPING_KEY}" \
+  --source_file="${TINK_BASE_DIR}/tink_java_gcpkms/tools/maven_central_tokens/encrypted_password" \
+  --dest_file="${BASE64TOKENFILE}" \
+  --context=MavenCentralPublishing \
+  --mode=decrypt
+readonly BASE64TOKEN="$(cat ${BASE64TOKENFILE})"
+
+declare -ar APPS=(paymentmethodtoken rewardedads webpush)
+
+for app in "${APPS[@]}" ; do
+  curl --request POST \
+    --header "Authorization: Bearer ${BASE64TOKEN}" \
+    --form bundle=@kokoro_upload_dir/release/"${app}"-release-bundle.zip \
+    https://central.sonatype.com/api/v1/publisher/upload
+done
