@@ -82,7 +82,7 @@ maven_bundle(
     lib_name = "tink-gcpkms",
     lib_version = "HEAD-SNAPSHOT",
     maven_jar_rules_target = ":tink-gcpkms",
-    pom_template = "//maven:tink-java-apps-tink-gcpkms.pom.xml",
+    pom_template = "//maven:tink-java-gcpkms.pom.xml",
     tags = ["manual"],
 )
 
@@ -95,7 +95,7 @@ maven_bundle(
     lib_name = "tink-gcpkms",
     lib_version = get_module_version(name = "version_label_name"),
     maven_jar_rules_target = ":tink-gcpkms",
-    pom_template = "//maven:tink-java-apps-tink-gcpkms.pom.xml",
+    pom_template = "//maven:tink-java-gcpkms.pom.xml",
     tags = ["manual"],
 )
 EOF
