@@ -89,7 +89,7 @@ mkdir exported_bundles
 
 echo "Building tink-gcpkms-snapshot-bundle"
 echo "========================================"
-bazelisk build :tink-gcpkms-snapshot-bundle
+bazelisk build --enable_bzlmod :tink-gcpkms-snapshot-bundle
 cp bazel-bin/tink-gcpkms-snapshot-bundle.zip exported_bundles
 
 # If the file gpg_pin.txt exist then we assume that gpg_key.asc also exists.
@@ -100,7 +100,7 @@ if [[ -f "gpg_pin.txt" ]]; then
   # We are skipping the tests that require network connection.
   bazelisk test ... --test_tag_filters=-requires-network
 
-  bazelisk build :tink-gcpkms-release-bundle
+  bazelisk build --enable_bzlmod :tink-gcpkms-release-bundle
   cp bazel-bin/tink-gcpkms-release-bundle.zip exported_bundles
 fi
 
