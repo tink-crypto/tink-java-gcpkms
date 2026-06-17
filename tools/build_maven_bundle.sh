@@ -49,8 +49,9 @@ export ANDROID_HOME=/android-sdk-30
 # NOTE: here we ignore the consistency check for com.google.crypto.tink:tink
 # because tink-java-gcpkms depends on tink-java as a Bazel dependency, while the
 # POM file declares it as a Maven dependency.
-./kokoro/testutils/check_maven_bazel_deps_consistency.sh "//:tink-gcpkms" \
-  -e "com.google.crypto.tink:tink" "maven/tink-java-gcpkms.pom.xml"
+./kokoro/testutils/check_maven_bazel_deps_consistency.sh \
+  -e "com.google.crypto.tink:tink" "//:tink-gcpkms" \
+  "maven/tink-java-gcpkms.pom.xml"
 
 echo "Creating GPG key and GPG pin for testing"
 echo "========================================"
