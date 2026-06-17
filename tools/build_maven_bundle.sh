@@ -98,7 +98,7 @@ if [[ -f "gpg_pin.txt" ]]; then
   # We are doing an actual relase.  Hence run the tests once more in this
   # case (otherwise we save ourselves the time)
   # We are skipping the tests that require network connection.
-  bazelisk test ... --test_tag_filters=-requires-network
+  bazelisk test --enable_bzlmod ... --test_tag_filters=-requires-network
 
   bazelisk build --enable_bzlmod :tink-gcpkms-release-bundle
   cp bazel-bin/tink-gcpkms-release-bundle.zip exported_bundles
