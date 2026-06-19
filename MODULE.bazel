@@ -23,12 +23,14 @@ bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(name = "rules_android", version = "0.6.6", repo_name = "build_bazel_rules_android")
 bazel_dep(name = "platforms", version = "1.0.0")
 
-bazel_dep(name = "tink_java")
+_TINK_VERSION = "1.22.0"
+
+bazel_dep(name = "tink_java", dev_dependency = True)
 archive_override(
     module_name = "tink_java",
-    integrity = "sha256-KodHYV+34hNasUl6GqkqgvRiRl4gYI39UtBfM3n2850=",
-    strip_prefix = "tink-java-1.19.0",
-    urls = ["https://github.com/tink-crypto/tink-java/archive/refs/tags/v1.19.0.tar.gz"],
+    integrity = "sha256-90XD65Quod+NaN4sWIzXb6UGneTpmLZpEL8hSmAdisg=",
+    strip_prefix = "tink-java-%s" % _TINK_VERSION,
+    urls = ["https://github.com/tink-crypto/tink-java/archive/refs/tags/v%s.tar.gz" % _TINK_VERSION],
 )
 
 maven = use_extension("@rules_jvm_external//:extensions.bzl", "maven")
@@ -48,12 +50,13 @@ maven.install(
         "com.google.auto.service:auto-service:1.1.1",
         "com.google.cloud:google-cloud-kms:2.63.0",
         "com.google.code.findbugs:jsr305:3.0.2",
+        "com.google.crypto.tink:tink:%s" % _TINK_VERSION,
         "com.google.errorprone:error_prone_annotations:2.41.0",
         "com.google.guava:guava:33.4.0-jre",
         "com.google.http-client:google-http-client-gson:1.46.3",
         "com.google.http-client:google-http-client:1.46.3",
         "com.google.oauth-client:google-oauth-client:1.39.0",
-        "com.google.protobuf:protobuf-java:4.32.1",
+        "com.google.protobuf:protobuf-java:4.33.0",
         "io.grpc:grpc-api:%s" % _GRPC_VERSION,
         "io.grpc:grpc-inprocess:%s" % _GRPC_VERSION,
         "io.grpc:grpc-stub:%s" % _GRPC_VERSION,

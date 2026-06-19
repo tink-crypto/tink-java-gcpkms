@@ -49,8 +49,7 @@ export ANDROID_HOME=/android-sdk-30
 # NOTE: here we ignore the consistency check for com.google.crypto.tink:tink
 # because tink-java-gcpkms depends on tink-java as a Bazel dependency, while the
 # POM file declares it as a Maven dependency.
-./kokoro/testutils/check_maven_bazel_deps_consistency.sh \
-  -e "com.google.crypto.tink:tink" "//:tink-gcpkms" \
+./kokoro/testutils/check_maven_bazel_deps_consistency.sh "//:tink-gcpkms" \
   "maven/tink-java-gcpkms.pom.xml"
 
 echo "Creating GPG key and GPG pin for testing"
@@ -89,7 +88,7 @@ mkdir exported_bundles
 
 echo "Building tink-gcpkms-snapshot-bundle"
 echo "========================================"
-bazelisk build --enable_bzlmod :tink-gcpkms-snapshot-bundle
+bazelisk build :tink-gcpkms-snapshot-bundle
 cp bazel-bin/tink-gcpkms-snapshot-bundle.zip exported_bundles
 
 # If the file gpg_pin.txt exist then we assume that gpg_key.asc also exists.
@@ -98,9 +97,9 @@ if [[ -f "gpg_pin.txt" ]]; then
   # We are doing an actual relase.  Hence run the tests once more in this
   # case (otherwise we save ourselves the time)
   # We are skipping the tests that require network connection.
-  bazelisk test --enable_bzlmod ... --test_tag_filters=-requires-network
+  bazelisk test ... --test_tag_filters=-requires-network
 
-  bazelisk build --enable_bzlmod :tink-gcpkms-release-bundle
+  bazelisk build :tink-gcpkms-release-bundle
   cp bazel-bin/tink-gcpkms-release-bundle.zip exported_bundles
 fi
 
