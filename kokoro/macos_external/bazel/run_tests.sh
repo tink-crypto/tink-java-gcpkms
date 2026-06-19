@@ -51,6 +51,9 @@ if [[ -n "${KOKORO_ROOT:-}" ]]; then
 fi
 readonly TINK_JAVA_GCPKMS_RUN_BAZEL_TESTS_ARGS
 
+echo "========================================================================="
+echo "Build and run unit tests"
+echo "========================================================================="
 ./kokoro/testutils/run_bazel_tests.sh \
   "${TINK_JAVA_GCPKMS_RUN_BAZEL_TESTS_ARGS[@]}"
 
@@ -71,5 +74,8 @@ if [[ -n "${KOKORO_ROOT:-}" ]]; then
 fi
 readonly TINK_JAVA_GCPKMS_EXAMPLES_RUN_BAZEL_TESTS_ARGS
 
+echo "========================================================================="
+echo "Build and run examples"
+echo "========================================================================="
 ./kokoro/testutils/run_bazel_tests.sh \
   "${TINK_JAVA_GCPKMS_EXAMPLES_RUN_BAZEL_TESTS_ARGS[@]}"
