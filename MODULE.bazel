@@ -16,6 +16,9 @@
 
 module(name = "tink_java_gcpkms", version = "1.11.0")
 
+_PROTOBUF_VERSION = "33.6"
+
+bazel_dep(name = "protobuf", version = _PROTOBUF_VERSION)
 bazel_dep(name = "bazel_skylib", version = "1.8.2")
 bazel_dep(name = "rules_java", version = "8.16.1")
 bazel_dep(name = "rules_jvm_external", version = "6.8")
@@ -56,7 +59,7 @@ maven.install(
         "com.google.http-client:google-http-client-gson:1.46.3",
         "com.google.http-client:google-http-client:1.46.3",
         "com.google.oauth-client:google-oauth-client:1.39.0",
-        "com.google.protobuf:protobuf-java:4.33.0",
+        "com.google.protobuf:protobuf-java:4.%s" % _PROTOBUF_VERSION,
         "io.grpc:grpc-api:%s" % _GRPC_VERSION,
         "io.grpc:grpc-inprocess:%s" % _GRPC_VERSION,
         "io.grpc:grpc-stub:%s" % _GRPC_VERSION,
