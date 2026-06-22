@@ -148,6 +148,8 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
         return digest.getSha384();
       case SHA512:
         return digest.getSha512();
+      case EXTERNAL_MU:
+        return digest.getExternalMu();
       case DIGEST_NOT_SET:
         return ByteString.EMPTY;
     }

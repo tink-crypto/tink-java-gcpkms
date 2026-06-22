@@ -46,12 +46,12 @@ maven.install(
     artifacts = [
         # go/keep-sorted start
         "com.google.api-client:google-api-client:2.7.2",
-        "com.google.api.grpc:grpc-google-cloud-kms-v1:0.154.0",
-        "com.google.api.grpc:proto-google-cloud-kms-v1:0.154.0",
+        "com.google.api.grpc:grpc-google-cloud-kms-v1:2.96.0",
+        "com.google.api.grpc:proto-google-cloud-kms-v1:2.96.0",
         "com.google.apis:google-api-services-cloudkms:v1-rev20241111-2.0.0",
         "com.google.auth:google-auth-library-oauth2-http:1.33.1",
         "com.google.auto.service:auto-service:1.1.1",
-        "com.google.cloud:google-cloud-kms:2.63.0",
+        "com.google.cloud:google-cloud-kms:2.96.0",
         "com.google.code.findbugs:jsr305:3.0.2",
         "com.google.crypto.tink:tink:%s" % _TINK_VERSION,
         "com.google.errorprone:error_prone_annotations:2.41.0",

@@ -81,17 +81,17 @@
   <properties>
     <java.version>11</java.version>
     <google-api-client.version>2.7.2</google-api-client.version>
-    <google-api-grpc-proto-cloud-kms-v1.version>0.154.0</google-api-grpc-proto-cloud-kms-v1.version>
+    <google-api-grpc-proto-cloud-kms-v1.version>2.96.0</google-api-grpc-proto-cloud-kms-v1.version>
     <google-api-services-cloudkms.version>v1-rev20241111-2.0.0</google-api-services-cloudkms.version>
-    <google-cloud-google-cloud-kms.version>2.63.0</google-cloud-google-cloud-kms.version>
-    <google-auth-library-oauth2-http.version>1.33.1</google-auth-library-oauth2-http.version>
+    <google-cloud-google-cloud-kms.version>2.96.0</google-cloud-google-cloud-kms.version>
+    <google-auth-library-oauth2-http.version>1.48.0</google-auth-library-oauth2-http.version>
     <auto-service-annotations.version>1.1.1</auto-service-annotations.version>
     <jsr305.version>3.0.2</jsr305.version>
-    <error_prone_annotations.version>2.41.0</error_prone_annotations.version>
-    <google-http-client.version>1.46.3</google-http-client.version>
-    <google-http-client-gson.version>1.46.3</google-http-client-gson.version>
+    <error_prone_annotations.version>2.48.0</error_prone_annotations.version>
+    <google-http-client.version>2.1.0</google-http-client.version>
+    <google-http-client-gson.version>2.1.0</google-http-client-gson.version>
     <google-oauth-client.version>1.39.0</google-oauth-client.version>
-    <google-guava.version>33.4.0-jre</google-guava.version>
+    <google-guava.version>33.5.0-jre</google-guava.version>
     <google-protobuf-java.version>4.33.6</google-protobuf-java.version>
     <tink.version>1.22.0</tink.version>
   </properties>

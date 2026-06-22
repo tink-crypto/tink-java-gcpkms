@@ -47,6 +47,7 @@ import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.stub.StreamObserver;
 import io.grpc.testing.GrpcCleanupRule;
+import java.lang.reflect.Method;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import org.junit.Before;
@@ -439,5 +440,17 @@ public final class GcpKmsPublicKeySignTest {
             .getSha256()
             .toByteArray();
     digestVerifier.verify(kmsSignature, digest);
+  }
+
+  @Test
+  public void getDigestBytes_externalMu() throws Exception {
+    Method getDigestBytesMethod =
+        GcpKmsPublicKeySign.class.getDeclaredMethod("getDigestBytes", Digest.class);
+    getDigestBytesMethod.setAccessible(true);
+
+    ByteString muBytes = ByteString.copyFromUtf8("external_mu_bytes");
+    Digest digest = Digest.newBuilder().setExternalMu(muBytes).build();
+    ByteString result = (ByteString) getDigestBytesMethod.invoke(null, digest);
+    assertThat(result).isEqualTo(muBytes);
   }
 }
