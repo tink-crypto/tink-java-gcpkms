@@ -69,7 +69,11 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
   public byte[] sign(final byte[] data) throws GeneralSecurityException {
     if (data.length > MAX_SIGN_DATA_SIZE) {
       throw new GeneralSecurityException(
-          "The data size is larger than the allowed size: " + MAX_SIGN_DATA_SIZE);
+          "The input data ("
+              + data.length
+              + " bytes) is larger than the allowed limit ("
+              + MAX_SIGN_DATA_SIZE
+              + " bytes).");
     }
 
     AsymmetricSignRequest.Builder builder = AsymmetricSignRequest.newBuilder().setName(keyName);
@@ -111,11 +115,35 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
     }
   }
 
+  /** Returns whether the given algorithm is supported for signing through Tink. */
+  private static boolean isSupported(CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm) {
+    switch (algorithm) {
+      case EC_SIGN_ED25519:
+      case EC_SIGN_P256_SHA256:
+      case EC_SIGN_P384_SHA384:
+      case EC_SIGN_SECP256K1_SHA256:
+      case RSA_SIGN_PSS_2048_SHA256:
+      case RSA_SIGN_PSS_3072_SHA256:
+      case RSA_SIGN_PSS_4096_SHA256:
+      case RSA_SIGN_PSS_4096_SHA512:
+      case RSA_SIGN_PKCS1_2048_SHA256:
+      case RSA_SIGN_PKCS1_3072_SHA256:
+      case RSA_SIGN_PKCS1_4096_SHA256:
+      case RSA_SIGN_PKCS1_4096_SHA512:
+      case RSA_SIGN_RAW_PKCS1_2048:
+      case RSA_SIGN_RAW_PKCS1_3072:
+      case RSA_SIGN_RAW_PKCS1_4096:
+        return true;
+      default:
+        return false;
+    }
+  }
+
   /**
    * Some AsymmetricSign algorithms require data as input and some other operate on a digest of the
    * data. This method determines if data itself is required for signing and returns true if so.
    */
-  boolean requiresDataForSign(
+  private static boolean requiresDataForSign(
       CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm, ProtectionLevel protectionLevel) {
     // Operate on the data if the algorithm is one of the following:
     switch (algorithm) {
@@ -140,7 +168,7 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
     return false;
   }
 
-  private static ByteString getDigestBytes(Digest digest) {
+  private static ByteString getDigestBytes(Digest digest) throws GeneralSecurityException {
     switch (digest.getDigestCase()) {
       case SHA256:
         return digest.getSha256();
@@ -157,7 +185,8 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
   }
 
   /** Finds out and returns the proper DigestCase for the given algorithm. */
-  Digest computeDigest(byte[] data, CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm)
+  private static Digest computeDigest(
+      byte[] data, CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm)
       throws GeneralSecurityException {
     MessageDigest messageDigest;
     Digest.Builder digestBuilder = Digest.newBuilder();
@@ -191,6 +220,22 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
     }
 
     return digestBuilder.build();
+  }
+
+  /**
+   * Verifies that the CRC32C checksum returned by KMS matches the public key, to detect corruption
+   * of the {@code GetPublicKey} response in transit.
+   */
+  private static void verifyPublicKeyChecksum(PublicKey publicKey) throws GeneralSecurityException {
+    if (!publicKey.hasPemCrc32C()) {
+      throw new GeneralSecurityException("KMS GetPublicKey response did not include a checksum.");
+    }
+    long computedCrc32c =
+        Hashing.crc32c().hashBytes(publicKey.getPemBytes().asReadOnlyByteBuffer()).padToLong();
+    if (computedCrc32c != publicKey.getPemCrc32C().getValue()) {
+      throw new GeneralSecurityException(
+          "The GetPublicKey checksum does not match the public key.");
+    }
   }
 
   /** A Builder to create a {@link PublicKeySign} that communicates with Cloud KMS via gRPC. */
@@ -232,13 +277,26 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
 
       // Retrieve the related public key from KMS, that contains information on
       // how to prepare the later AsymmetricSign requests.
+      PublicKey publicKey;
       try {
         GetPublicKeyRequest request = GetPublicKeyRequest.newBuilder().setName(keyName).build();
-        PublicKey publicKey = kmsClient.getPublicKey(request);
-        return new GcpKmsPublicKeySign(kmsClient, keyName, publicKey);
+        publicKey = kmsClient.getPublicKey(request);
       } catch (RuntimeException e) {
         throw new GeneralSecurityException("The KMS GetPublicKey failed.", e);
       }
+
+      // Verify the integrity of the fetched public key before relying on it.
+      if (!publicKey.getName().equals(keyName)) {
+        throw new GeneralSecurityException(
+            "The key name in the response does not match the requested key name.");
+      }
+      verifyPublicKeyChecksum(publicKey);
+      if (!isSupported(publicKey.getAlgorithm())) {
+        throw new GeneralSecurityException(
+            "The algorithm " + publicKey.getAlgorithm() + " is not supported.");
+      }
+
+      return new GcpKmsPublicKeySign(kmsClient, keyName, publicKey);
     }
   }
 

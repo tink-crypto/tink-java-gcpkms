@@ -78,7 +78,14 @@ public final class GcpKmsPublicKeySignTest {
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/8";
   private static final String KEY_NAME_FOR_REQUEST_DIGEST_CRC32C =
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/9";
+  private static final String KEY_NAME_FOR_GET_PUBLIC_KEY_EXCEPTION =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/10";
+  private static final String KEY_NAME_FOR_PUBLIC_KEY_CHECKSUM_MISMATCH =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/11";
   private static final String KEY_PEM = "PEM";
+  // The CRC32C checksum of KEY_PEM, returned by the fake KMS in the GetPublicKey response.
+  private static final Int64Value KEY_PEM_CRC32C =
+      Int64Value.of(Hashing.crc32c().hashBytes(KEY_PEM.getBytes(UTF_8)).padToLong());
   private static final byte[] dataForSign = "data for signing".getBytes(UTF_8);
   // The value of digest_crc32c for dataForSign
   private static final Int64Value REQUEST_DIGEST_CRC32C = Int64Value.of(62061691L);
@@ -87,6 +94,9 @@ public final class GcpKmsPublicKeySignTest {
   private PublicKeySign digestSigner;
   private PublicKeyVerify dataVerifier;
   private PublicKeyVerify digestVerifier;
+
+  // The last AsymmetricSignRequest received by the fake KMS, used to assert on the request shape.
+  private AsymmetricSignRequest capturedSignRequest;
 
   /** This rule manages automatic graceful shutdown for the registered servers and channels. */
   @Rule public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
@@ -98,6 +108,7 @@ public final class GcpKmsPublicKeySignTest {
     @Override
     public void asymmetricSign(
         AsymmetricSignRequest request, StreamObserver<AsymmetricSignResponse> responseObserver) {
+      capturedSignRequest = request;
       AsymmetricSignResponse.Builder builder =
           AsymmetricSignResponse.newBuilder().setName(request.getName());
       try {
@@ -179,8 +190,15 @@ public final class GcpKmsPublicKeySignTest {
     @Override
     public void getPublicKey(
         GetPublicKeyRequest request, StreamObserver<PublicKey> responseObserver) {
-      PublicKey.Builder builder = PublicKey.newBuilder().setName(request.getName()).setPem(KEY_PEM);
+      PublicKey.Builder builder =
+          PublicKey.newBuilder()
+              .setName(request.getName())
+              .setPem(KEY_PEM)
+              .setPemCrc32C(KEY_PEM_CRC32C);
       switch (request.getName()) {
+        case KEY_NAME_FOR_GET_PUBLIC_KEY_EXCEPTION:
+          responseObserver.onError(new GeneralSecurityException("testing GetPublicKey exception."));
+          return;
         case KEY_NAME_FOR_DATA:
         case KEY_NAME_FOR_NO_VERIFIED_CRC32C:
         case KEY_NAME_FOR_SIGNATURE_MISMATCH:
@@ -205,6 +223,13 @@ public final class GcpKmsPublicKeySignTest {
           builder
               .setProtectionLevel(ProtectionLevel.SOFTWARE)
               .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.HMAC_SHA256);
+          break;
+        case KEY_NAME_FOR_PUBLIC_KEY_CHECKSUM_MISMATCH:
+          builder
+              .setProtectionLevel(ProtectionLevel.SOFTWARE)
+              .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.EC_SIGN_ED25519)
+              // Corrupt the checksum so it no longer matches the PEM.
+              .setPemCrc32C(Int64Value.of(KEY_PEM_CRC32C.getValue() + 1));
           break;
         default:
           break;
@@ -337,13 +362,48 @@ public final class GcpKmsPublicKeySignTest {
   }
 
   @Test
-  public void asymmetricSignInvalidAlgorithm() throws Exception {
+  public void buildFailsForUnsupportedAlgorithm() throws Exception {
+    assertThrows(
+        GeneralSecurityException.class,
+        () ->
+            GcpKmsPublicKeySign.builder()
+                .setKeyName(KEY_NAME_FOR_INVALID_ALGORITHM)
+                .setKeyManagementServiceClient(kmsClient)
+                .build());
+  }
+
+  @Test
+  public void buildFailsWhenGetPublicKeyThrows() throws Exception {
+    assertThrows(
+        GeneralSecurityException.class,
+        () ->
+            GcpKmsPublicKeySign.builder()
+                .setKeyName(KEY_NAME_FOR_GET_PUBLIC_KEY_EXCEPTION)
+                .setKeyManagementServiceClient(kmsClient)
+                .build());
+  }
+
+  @Test
+  public void buildFailsForPublicKeyChecksumMismatch() throws Exception {
+    assertThrows(
+        GeneralSecurityException.class,
+        () ->
+            GcpKmsPublicKeySign.builder()
+                .setKeyName(KEY_NAME_FOR_PUBLIC_KEY_CHECKSUM_MISMATCH)
+                .setKeyManagementServiceClient(kmsClient)
+                .build());
+  }
+
+  @Test
+  public void signFailsForTooLargeData() throws Exception {
     PublicKeySign kmsSigner =
         GcpKmsPublicKeySign.builder()
-            .setKeyName(KEY_NAME_FOR_INVALID_ALGORITHM)
+            .setKeyName(KEY_NAME_FOR_DATA)
             .setKeyManagementServiceClient(kmsClient)
             .build();
-    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(dataForSign));
+
+    byte[] tooLargeData = new byte[64 * 1024 + 1];
+    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(tooLargeData));
   }
 
   @Test
@@ -452,5 +512,49 @@ public final class GcpKmsPublicKeySignTest {
     Digest digest = Digest.newBuilder().setExternalMu(muBytes).build();
     ByteString result = (ByteString) getDigestBytesMethod.invoke(null, digest);
     assertThat(result).isEqualTo(muBytes);
+  }
+
+  @Test
+  public void asymmetricSignDataRequestIsCorrect() throws Exception {
+    PublicKeySign kmsSigner =
+        GcpKmsPublicKeySign.builder()
+            .setKeyName(KEY_NAME_FOR_DATA)
+            .setKeyManagementServiceClient(kmsClient)
+            .build();
+
+    byte[] unused = kmsSigner.sign(dataForSign);
+
+    // Data-mode algorithms sign the raw data: the request must carry the data (with its checksum)
+    // and no digest.
+    assertThat(capturedSignRequest.getName()).isEqualTo(KEY_NAME_FOR_DATA);
+    assertThat(capturedSignRequest.getData().toByteArray()).isEqualTo(dataForSign);
+    assertThat(capturedSignRequest.hasDataCrc32C()).isTrue();
+    assertThat(capturedSignRequest.getDataCrc32C().getValue())
+        .isEqualTo(Hashing.crc32c().hashBytes(dataForSign).padToLong());
+    assertThat(capturedSignRequest.hasDigest()).isFalse();
+    assertThat(capturedSignRequest.hasDigestCrc32C()).isFalse();
+  }
+
+  @Test
+  public void asymmetricSignDigestRequestIsCorrect() throws Exception {
+    PublicKeySign kmsSigner =
+        GcpKmsPublicKeySign.builder()
+            .setKeyName(KEY_NAME_FOR_DIGEST)
+            .setKeyManagementServiceClient(kmsClient)
+            .build();
+
+    byte[] unused = kmsSigner.sign(dataForSign);
+
+    // Digest-mode algorithms sign a digest of the data: the request must carry the correct SHA-256
+    // digest (with its checksum) and no data.
+    byte[] expectedDigest = MessageDigest.getInstance("SHA-256").digest(dataForSign);
+    assertThat(capturedSignRequest.getName()).isEqualTo(KEY_NAME_FOR_DIGEST);
+    assertThat(capturedSignRequest.getData().isEmpty()).isTrue();
+    assertThat(capturedSignRequest.hasDataCrc32C()).isFalse();
+    assertThat(capturedSignRequest.hasDigest()).isTrue();
+    assertThat(capturedSignRequest.getDigest().getSha256().toByteArray()).isEqualTo(expectedDigest);
+    assertThat(capturedSignRequest.hasDigestCrc32C()).isTrue();
+    assertThat(capturedSignRequest.getDigestCrc32C().getValue())
+        .isEqualTo(Hashing.crc32c().hashBytes(expectedDigest).padToLong());
   }
 }
