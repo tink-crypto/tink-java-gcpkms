@@ -93,10 +93,22 @@
     <google-oauth-client.version>1.39.0</google-oauth-client.version>
     <google-guava.version>33.5.0-jre</google-guava.version>
     <google-protobuf-java.version>4.33.6</google-protobuf-java.version>
+    <bouncycastle.version>1.84</bouncycastle.version>
     <tink.version>1.22.0</tink.version>
   </properties>
 
   <dependencies>
+    <!--
+      Required only for external-mu ML-DSA signing, which uses BouncyCastle's SHAKE-256 to compute
+      the message representative. Marked optional so consumers that do not sign with external-mu keys
+      are not forced to depend on it; those that do must add it to their runtime classpath.
+    -->
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk18on</artifactId>
+      <version>${bouncycastle.version}</version>
+      <optional>true</optional>
+    </dependency>
     <dependency>
       <groupId>com.google.api-client</groupId>
       <artifactId>google-api-client</artifactId>

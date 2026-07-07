@@ -38,10 +38,20 @@ java_library(
     ],
 )
 
+# BouncyCastle is only needed to compute the SHAKE-256 message representative for external-mu ML-DSA
+# signing. It is exposed as a compile-only (neverlink) dependency so it is not forced onto consumers'
+# runtime classpath; consumers that sign with external-mu keys must provide it themselves.
+java_library(
+    name = "bcprov_neverlink",
+    neverlink = 1,
+    exports = ["@maven//:org_bouncycastle_bcprov_jdk18on"],
+)
+
 java_library(
     name = "gcp_kms_public_key_sign",
     srcs = ["GcpKmsPublicKeySign.java"],
     deps = [
+        ":bcprov_neverlink",
         "@maven//:com_google_api_grpc_proto_google_cloud_kms_v1",
         "@maven//:com_google_cloud_google_cloud_kms",
         "@maven//:com_google_code_findbugs_jsr305",
