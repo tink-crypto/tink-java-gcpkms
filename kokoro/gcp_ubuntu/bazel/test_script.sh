@@ -74,7 +74,7 @@ readonly CACHE_FLAGS
 
 # Build and run unit tests.
 ADDITIONAL_MANUAL_TARGETS=()
-if [[ "${RUN_MANUAL_TESTS}" == "true" ]]; then
+if [[ "${RUN_MANUAL_TESTS}" == "true" ]] && false; then # TODO(b/532941360): Re-enable once GCP KMS credentials are updated.
   ADDITIONAL_MANUAL_TARGETS+=(
     "//src/test/java/com/google/crypto/tink/integration/gcpkms:GcpKmsIntegrationTest"
   )
@@ -86,11 +86,11 @@ echo "========================================================================="
 echo "Build and run unit tests"
 echo "========================================================================="
 ./kokoro/testutils/run_bazel_tests.sh  "${CACHE_FLAGS[@]}" . \
-  "${ADDITIONAL_MANUAL_TARGETS[@]}"
+  ${ADDITIONAL_MANUAL_TARGETS[@]:+"${ADDITIONAL_MANUAL_TARGETS[@]}"}
 
 # Build and run examples.
 ADDITIONAL_EXAMPLES_MANUAL_TARGETS=()
-if [[ "${RUN_MANUAL_TESTS}" == "true" ]]; then
+if [[ "${RUN_MANUAL_TESTS}" == "true" ]] && false; then # TODO(b/532941360): Re-enable once GCP KMS credentials are updated.
   ADDITIONAL_EXAMPLES_MANUAL_TARGETS=(
     "//gcs:gcs_envelope_aead_example_test"
     "//encryptedkeyset:encrypted_keyset_example_test"
@@ -103,4 +103,4 @@ echo "========================================================================="
 echo "Build and run examples"
 echo "========================================================================="
 ./kokoro/testutils/run_bazel_tests.sh "${CACHE_FLAGS[@]}" "examples" \
-  "${ADDITIONAL_EXAMPLES_MANUAL_TARGETS[@]}"
+  ${ADDITIONAL_EXAMPLES_MANUAL_TARGETS[@]:+"${ADDITIONAL_EXAMPLES_MANUAL_TARGETS[@]}"}

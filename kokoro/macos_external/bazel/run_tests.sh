@@ -44,7 +44,7 @@ if [[ -n "${TINK_REMOTE_BAZEL_CACHE_GCS_BUCKET:-}" ]]; then
   )
 fi
 TINK_JAVA_GCPKMS_RUN_BAZEL_TESTS_ARGS+=( . )
-if [[ -n "${KOKORO_ROOT:-}" ]]; then
+if [[ -n "${KOKORO_ROOT:-}" ]] && false; then # TODO(b/532941360): Re-enable once GCP KMS credentials are updated.
   TINK_JAVA_GCPKMS_RUN_BAZEL_TESTS_ARGS+=(
     "//src/test/java/com/google/crypto/tink/integration/gcpkms:GcpKmsIntegrationTest"
   )
@@ -65,7 +65,7 @@ if [[ -n "${TINK_REMOTE_BAZEL_CACHE_GCS_BUCKET:-}" ]]; then
 fi
 TINK_JAVA_GCPKMS_EXAMPLES_RUN_BAZEL_TESTS_ARGS+=( "examples" )
 # Targets tagged as "manual" that require setting GCP credentials.
-if [[ -n "${KOKORO_ROOT:-}" ]]; then
+if [[ -n "${KOKORO_ROOT:-}" ]] && false; then # TODO(b/532941360): Re-enable once GCP KMS credentials are updated.
   TINK_JAVA_GCPKMS_EXAMPLES_RUN_BAZEL_TESTS_ARGS+=(
     "//gcs:gcs_envelope_aead_example_test"
     "//encryptedkeyset:encrypted_keyset_example_test"
