@@ -27,12 +27,12 @@ bazel_dep(name = "rules_license", version = "1.0.0")
 bazel_dep(name = "rules_android", version = "0.6.6", repo_name = "build_bazel_rules_android")
 bazel_dep(name = "platforms", version = "1.0.0")
 
-_TINK_VERSION = "1.22.0"
+_TINK_VERSION = "1.23.0"
 
 bazel_dep(name = "tink_java", dev_dependency = True)
 archive_override(
     module_name = "tink_java",
-    integrity = "sha256-90XD65Quod+NaN4sWIzXb6UGneTpmLZpEL8hSmAdisg=",
+    integrity = "sha256-uzzV/1cCE8/49oIDaM2WVgEqcjbURhF99oJTiJ5FuOg=",
     strip_prefix = "tink-java-%s" % _TINK_VERSION,
     urls = ["https://github.com/tink-crypto/tink-java/archive/refs/tags/v%s.tar.gz" % _TINK_VERSION],
 )
@@ -61,10 +61,12 @@ maven.install(
         "com.google.http-client:google-http-client:1.46.3",
         "com.google.oauth-client:google-oauth-client:1.39.0",
         "com.google.protobuf:protobuf-java:4.%s" % _PROTOBUF_VERSION,
+        "com.google.truth:truth:1.4.2",
         "io.grpc:grpc-api:%s" % _GRPC_VERSION,
         "io.grpc:grpc-inprocess:%s" % _GRPC_VERSION,
         "io.grpc:grpc-stub:%s" % _GRPC_VERSION,
         "io.grpc:grpc-testing:%s" % _GRPC_VERSION,
+        "junit:junit:4.13.2",
         "org.bouncycastle:bcprov-jdk18on:1.84",
         "org.junit.jupiter:junit-jupiter-api:5.11.3",
         # go/keep-sorted end

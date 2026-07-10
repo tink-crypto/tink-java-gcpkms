@@ -94,7 +94,7 @@
     <google-guava.version>33.5.0-jre</google-guava.version>
     <google-protobuf-java.version>4.33.6</google-protobuf-java.version>
     <bouncycastle.version>1.84</bouncycastle.version>
-    <tink.version>1.22.0</tink.version>
+    <tink.version>1.23.0</tink.version>
   </properties>
 
   <dependencies>
