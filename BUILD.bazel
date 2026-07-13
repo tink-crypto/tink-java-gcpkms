@@ -24,6 +24,7 @@ gen_maven_jar_rules(
         "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_client",
         "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_mac",
         "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_public_key_sign",
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms/internal:gcp_kms_util",
     ],
 )
 

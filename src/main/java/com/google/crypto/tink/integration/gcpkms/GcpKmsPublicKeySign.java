@@ -26,13 +26,13 @@ import com.google.cloud.kms.v1.ProtectionLevel;
 import com.google.cloud.kms.v1.PublicKey;
 import com.google.common.hash.Hashing;
 import com.google.crypto.tink.PublicKeySign;
+import com.google.crypto.tink.integration.gcpkms.internal.GcpKmsUtil;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Int64Value;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 
 /**
@@ -222,29 +222,10 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
     return digestBuilder.build();
   }
 
-  /**
-   * Verifies that the CRC32C checksum returned by KMS matches the public key, to detect corruption
-   * of the {@code GetPublicKey} response in transit.
-   */
-  private static void verifyPublicKeyChecksum(PublicKey publicKey) throws GeneralSecurityException {
-    if (!publicKey.hasPemCrc32C()) {
-      throw new GeneralSecurityException("KMS GetPublicKey response did not include a checksum.");
-    }
-    long computedCrc32c =
-        Hashing.crc32c().hashBytes(publicKey.getPemBytes().asReadOnlyByteBuffer()).padToLong();
-    if (computedCrc32c != publicKey.getPemCrc32C().getValue()) {
-      throw new GeneralSecurityException(
-          "The GetPublicKey checksum does not match the public key.");
-    }
-  }
-
   /** A Builder to create a {@link PublicKeySign} that communicates with Cloud KMS via gRPC. */
   public static final class Builder {
     @Nullable private String keyName = null;
     @Nullable private KeyManagementServiceClient kmsClient = null;
-    private static final String KEY_NAME_PATTERN =
-        "projects/[^/]+/locations/[^/]+/keyRings/[^/]+/cryptoKeys/[^/]+/cryptoKeyVersions/.*";
-    private static final Pattern KEY_NAME_MATCHER = Pattern.compile(KEY_NAME_PATTERN);
 
     private Builder() {}
 
@@ -263,13 +244,7 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
     }
 
     public PublicKeySign build() throws GeneralSecurityException {
-      if (keyName == null) {
-        throw new GeneralSecurityException("The keyName is null.");
-      }
-
-      if (!KEY_NAME_MATCHER.matcher(keyName).matches()) {
-        throw new GeneralSecurityException("The keyName must follow " + KEY_NAME_PATTERN);
-      }
+      GcpKmsUtil.validateKeyName(keyName);
 
       if (kmsClient == null) {
         throw new GeneralSecurityException("The KeyManagementServiceClient object is null.");
@@ -290,7 +265,7 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
         throw new GeneralSecurityException(
             "The key name in the response does not match the requested key name.");
       }
-      verifyPublicKeyChecksum(publicKey);
+      GcpKmsUtil.verifyPublicKeyChecksum(publicKey);
       if (!isSupported(publicKey.getAlgorithm())) {
         throw new GeneralSecurityException(
             "The algorithm " + publicKey.getAlgorithm() + " is not supported.");

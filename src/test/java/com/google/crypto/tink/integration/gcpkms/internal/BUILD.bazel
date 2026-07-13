@@ -1,0 +1,17 @@
+load("@rules_java//java:defs.bzl", "java_test")
+
+licenses(["notice"])
+
+java_test(
+    name = "GcpKmsUtilTest",
+    size = "small",
+    srcs = ["GcpKmsUtilTest.java"],
+    deps = [
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms/internal:gcp_kms_util",
+        "@maven//:com_google_api_grpc_proto_google_cloud_kms_v1",
+        "@maven//:com_google_guava_guava",
+        "@maven//:com_google_protobuf_protobuf_java",
+        "@maven//:com_google_truth_truth",
+        "@maven//:junit_junit",
+    ],
+)

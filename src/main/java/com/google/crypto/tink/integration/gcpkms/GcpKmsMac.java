@@ -23,11 +23,11 @@ import com.google.cloud.kms.v1.MacVerifyRequest;
 import com.google.cloud.kms.v1.MacVerifyResponse;
 import com.google.common.hash.Hashing;
 import com.google.crypto.tink.Mac;
+import com.google.crypto.tink.integration.gcpkms.internal.GcpKmsUtil;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Int64Value;
 import java.security.GeneralSecurityException;
-import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 
 /**
@@ -142,9 +142,6 @@ public final class GcpKmsMac implements Mac {
   public static final class Builder {
     @Nullable private String keyName = null;
     @Nullable private KeyManagementServiceClient kmsClient = null;
-    private static final String KEY_NAME_PATTERN =
-        "projects/[^/]+/locations/[^/]+/keyRings/[^/]+/cryptoKeys/[^/]+/cryptoKeyVersions/.*";
-    private static final Pattern KEY_NAME_MATCHER = Pattern.compile(KEY_NAME_PATTERN);
 
     private Builder() {}
 
@@ -163,12 +160,7 @@ public final class GcpKmsMac implements Mac {
     }
 
     public Mac build() throws GeneralSecurityException {
-      if (keyName == null) {
-        throw new GeneralSecurityException("The keyName is null.");
-      }
-      if (!KEY_NAME_MATCHER.matcher(keyName).matches()) {
-        throw new GeneralSecurityException("The keyName must follow " + KEY_NAME_PATTERN);
-      }
+      GcpKmsUtil.validateKeyName(keyName);
       if (kmsClient == null) {
         throw new GeneralSecurityException("The KeyManagementServiceClient object is null.");
       }

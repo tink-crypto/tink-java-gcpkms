@@ -51,7 +51,7 @@ java_library(
     name = "gcp_kms_public_key_sign",
     srcs = ["GcpKmsPublicKeySign.java"],
     deps = [
-        ":bcprov_neverlink",
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms/internal:gcp_kms_util",
         "@maven//:com_google_api_grpc_proto_google_cloud_kms_v1",
         "@maven//:com_google_cloud_google_cloud_kms",
         "@maven//:com_google_code_findbugs_jsr305",
@@ -66,6 +66,7 @@ java_library(
     name = "gcp_kms_mac",
     srcs = ["GcpKmsMac.java"],
     deps = [
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms/internal:gcp_kms_util",
         "@maven//:com_google_api_grpc_proto_google_cloud_kms_v1",
         "@maven//:com_google_cloud_google_cloud_kms",
         "@maven//:com_google_code_findbugs_jsr305",

@@ -305,20 +305,24 @@ public final class GcpKmsPublicKeySignTest {
 
   @Test
   public void keyNameInWrongFormat() throws Exception {
-    assertThrows(
-        GeneralSecurityException.class,
-        () ->
-            GcpKmsPublicKeySign.builder()
-                .setKeyName(KEY_NAME_WRONG_FORMAT)
-                .setKeyManagementServiceClient(kmsClient)
-                .build());
+    GeneralSecurityException e =
+        assertThrows(
+            GeneralSecurityException.class,
+            () ->
+                GcpKmsPublicKeySign.builder()
+                    .setKeyName(KEY_NAME_WRONG_FORMAT)
+                    .setKeyManagementServiceClient(kmsClient)
+                    .build());
+    assertThat(e).hasMessageThat().contains("The keyName must follow");
   }
 
   @Test
   public void kmsClientNotGiven() throws Exception {
-    assertThrows(
-        GeneralSecurityException.class,
-        () -> GcpKmsPublicKeySign.builder().setKeyName(KEY_NAME_FOR_DATA).build());
+    GeneralSecurityException e =
+        assertThrows(
+            GeneralSecurityException.class,
+            () -> GcpKmsPublicKeySign.builder().setKeyName(KEY_NAME_FOR_DATA).build());
+    assertThat(e).hasMessageThat().contains("The KeyManagementServiceClient object is null");
   }
 
   @Test
@@ -328,7 +332,9 @@ public final class GcpKmsPublicKeySignTest {
             .setKeyName(KEY_NAME_FOR_NO_VERIFIED_CRC32C)
             .setKeyManagementServiceClient(kmsClient)
             .build();
-    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(dataForSign));
+    GeneralSecurityException e =
+        assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(dataForSign));
+    assertThat(e).hasMessageThat().contains("Checking the input checksum failed");
   }
 
   @Test
@@ -338,7 +344,9 @@ public final class GcpKmsPublicKeySignTest {
             .setKeyName(KEY_NAME_FOR_SIGNATURE_MISMATCH)
             .setKeyManagementServiceClient(kmsClient)
             .build();
-    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(dataForSign));
+    GeneralSecurityException e =
+        assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(dataForSign));
+    assertThat(e).hasMessageThat().contains("Signature checksum mismatch");
   }
 
   @Test
@@ -348,7 +356,9 @@ public final class GcpKmsPublicKeySignTest {
             .setKeyName(KEY_NAME_FOR_KEY_NAME_MISMATCH)
             .setKeyManagementServiceClient(kmsClient)
             .build();
-    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(dataForSign));
+    GeneralSecurityException e =
+        assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(dataForSign));
+    assertThat(e).hasMessageThat().contains("The key name in the response does not match");
   }
 
   @Test
@@ -358,40 +368,48 @@ public final class GcpKmsPublicKeySignTest {
             .setKeyName(KEY_NAME_FOR_EXCEPTION)
             .setKeyManagementServiceClient(kmsClient)
             .build();
-    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(dataForSign));
+    GeneralSecurityException e =
+        assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(dataForSign));
+    assertThat(e).hasMessageThat().contains("Asymmetric sign failed");
   }
 
   @Test
   public void buildFailsForUnsupportedAlgorithm() throws Exception {
-    assertThrows(
-        GeneralSecurityException.class,
-        () ->
-            GcpKmsPublicKeySign.builder()
-                .setKeyName(KEY_NAME_FOR_INVALID_ALGORITHM)
-                .setKeyManagementServiceClient(kmsClient)
-                .build());
+    GeneralSecurityException e =
+        assertThrows(
+            GeneralSecurityException.class,
+            () ->
+                GcpKmsPublicKeySign.builder()
+                    .setKeyName(KEY_NAME_FOR_INVALID_ALGORITHM)
+                    .setKeyManagementServiceClient(kmsClient)
+                    .build());
+    assertThat(e).hasMessageThat().contains("is not supported");
   }
 
   @Test
   public void buildFailsWhenGetPublicKeyThrows() throws Exception {
-    assertThrows(
-        GeneralSecurityException.class,
-        () ->
-            GcpKmsPublicKeySign.builder()
-                .setKeyName(KEY_NAME_FOR_GET_PUBLIC_KEY_EXCEPTION)
-                .setKeyManagementServiceClient(kmsClient)
-                .build());
+    GeneralSecurityException e =
+        assertThrows(
+            GeneralSecurityException.class,
+            () ->
+                GcpKmsPublicKeySign.builder()
+                    .setKeyName(KEY_NAME_FOR_GET_PUBLIC_KEY_EXCEPTION)
+                    .setKeyManagementServiceClient(kmsClient)
+                    .build());
+    assertThat(e).hasMessageThat().contains("The KMS GetPublicKey failed");
   }
 
   @Test
   public void buildFailsForPublicKeyChecksumMismatch() throws Exception {
-    assertThrows(
-        GeneralSecurityException.class,
-        () ->
-            GcpKmsPublicKeySign.builder()
-                .setKeyName(KEY_NAME_FOR_PUBLIC_KEY_CHECKSUM_MISMATCH)
-                .setKeyManagementServiceClient(kmsClient)
-                .build());
+    GeneralSecurityException e =
+        assertThrows(
+            GeneralSecurityException.class,
+            () ->
+                GcpKmsPublicKeySign.builder()
+                    .setKeyName(KEY_NAME_FOR_PUBLIC_KEY_CHECKSUM_MISMATCH)
+                    .setKeyManagementServiceClient(kmsClient)
+                    .build());
+    assertThat(e).hasMessageThat().contains("The GetPublicKey checksum does not match");
   }
 
   @Test
@@ -403,7 +421,9 @@ public final class GcpKmsPublicKeySignTest {
             .build();
 
     byte[] tooLargeData = new byte[64 * 1024 + 1];
-    assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(tooLargeData));
+    GeneralSecurityException e =
+        assertThrows(GeneralSecurityException.class, () -> kmsSigner.sign(tooLargeData));
+    assertThat(e).hasMessageThat().contains("is larger than the allowed limit");
   }
 
   @Test
