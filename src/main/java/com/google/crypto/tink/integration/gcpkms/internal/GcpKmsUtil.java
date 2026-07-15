@@ -48,12 +48,14 @@ public final class GcpKmsUtil {
    * of the {@code GetPublicKey} response in transit.
    */
   public static void verifyPublicKeyChecksum(PublicKey publicKey) throws GeneralSecurityException {
-    if (!publicKey.hasPemCrc32C()) {
+    if (!publicKey.getPublicKey().hasCrc32CChecksum()) {
       throw new GeneralSecurityException("KMS GetPublicKey response did not include a checksum.");
     }
     long computedCrc32c =
-        Hashing.crc32c().hashBytes(publicKey.getPemBytes().asReadOnlyByteBuffer()).padToLong();
-    if (computedCrc32c != publicKey.getPemCrc32C().getValue()) {
+        Hashing.crc32c()
+            .hashBytes(publicKey.getPublicKey().getData().asReadOnlyByteBuffer())
+            .padToLong();
+    if (computedCrc32c != publicKey.getPublicKey().getCrc32CChecksum().getValue()) {
       throw new GeneralSecurityException(
           "The GetPublicKey checksum does not match the public key.");
     }

@@ -133,6 +133,9 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
       case RSA_SIGN_RAW_PKCS1_2048:
       case RSA_SIGN_RAW_PKCS1_3072:
       case RSA_SIGN_RAW_PKCS1_4096:
+      case PQ_SIGN_ML_DSA_44:
+      case PQ_SIGN_ML_DSA_65:
+      case PQ_SIGN_ML_DSA_87:
         return true;
       default:
         return false;
@@ -151,6 +154,9 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
       case RSA_SIGN_RAW_PKCS1_3072:
       case RSA_SIGN_RAW_PKCS1_4096:
       case EC_SIGN_ED25519:
+      case PQ_SIGN_ML_DSA_44:
+      case PQ_SIGN_ML_DSA_65:
+      case PQ_SIGN_ML_DSA_87:
         return true;
       default:
         break;
@@ -222,6 +228,30 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
     return digestBuilder.build();
   }
 
+  /**Fetches the public key for {@code keyName} from KMS and verifies its integrity.*/
+  private static PublicKey fetchPublicKey(KeyManagementServiceClient kmsClient, String keyName)
+      throws GeneralSecurityException {
+    PublicKey publicKey;
+    try {
+      GetPublicKeyRequest request =
+          GetPublicKeyRequest.newBuilder()
+              .setName(keyName)
+              .setPublicKeyFormat(PublicKey.PublicKeyFormat.PEM)
+              .build();
+      publicKey = kmsClient.getPublicKey(request);
+    } catch (RuntimeException e) {
+      throw new GeneralSecurityException("The KMS GetPublicKey failed.", e);
+    }
+
+    // Verify the integrity of the fetched public key before relying on it.
+    if (!publicKey.getName().equals(keyName)) {
+      throw new GeneralSecurityException(
+          "The key name in the response does not match the requested key name.");
+    }
+    GcpKmsUtil.verifyPublicKeyChecksum(publicKey);
+    return publicKey;
+  }
+
   /** A Builder to create a {@link PublicKeySign} that communicates with Cloud KMS via gRPC. */
   public static final class Builder {
     @Nullable private String keyName = null;
@@ -252,20 +282,7 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
 
       // Retrieve the related public key from KMS, that contains information on
       // how to prepare the later AsymmetricSign requests.
-      PublicKey publicKey;
-      try {
-        GetPublicKeyRequest request = GetPublicKeyRequest.newBuilder().setName(keyName).build();
-        publicKey = kmsClient.getPublicKey(request);
-      } catch (RuntimeException e) {
-        throw new GeneralSecurityException("The KMS GetPublicKey failed.", e);
-      }
-
-      // Verify the integrity of the fetched public key before relying on it.
-      if (!publicKey.getName().equals(keyName)) {
-        throw new GeneralSecurityException(
-            "The key name in the response does not match the requested key name.");
-      }
-      GcpKmsUtil.verifyPublicKeyChecksum(publicKey);
+      PublicKey publicKey = fetchPublicKey(kmsClient, keyName);
       if (!isSupported(publicKey.getAlgorithm())) {
         throw new GeneralSecurityException(
             "The algorithm " + publicKey.getAlgorithm() + " is not supported.");

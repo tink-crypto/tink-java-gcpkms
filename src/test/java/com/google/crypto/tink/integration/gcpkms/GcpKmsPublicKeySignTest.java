@@ -25,6 +25,7 @@ import com.google.api.gax.grpc.GrpcTransportChannel;
 import com.google.api.gax.rpc.FixedTransportChannelProvider;
 import com.google.cloud.kms.v1.AsymmetricSignRequest;
 import com.google.cloud.kms.v1.AsymmetricSignResponse;
+import com.google.cloud.kms.v1.ChecksummedData;
 import com.google.cloud.kms.v1.CryptoKeyVersion;
 import com.google.cloud.kms.v1.Digest;
 import com.google.cloud.kms.v1.GetPublicKeyRequest;
@@ -82,10 +83,17 @@ public final class GcpKmsPublicKeySignTest {
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/10";
   private static final String KEY_NAME_FOR_PUBLIC_KEY_CHECKSUM_MISMATCH =
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/11";
-  private static final String KEY_PEM = "PEM";
-  // The CRC32C checksum of KEY_PEM, returned by the fake KMS in the GetPublicKey response.
-  private static final Int64Value KEY_PEM_CRC32C =
-      Int64Value.of(Hashing.crc32c().hashBytes(KEY_PEM.getBytes(UTF_8)).padToLong());
+  private static final String KEY_NAME_FOR_ML_DSA_44 =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/12";
+  private static final String KEY_NAME_FOR_ML_DSA_65 =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/13";
+  private static final String KEY_NAME_FOR_ML_DSA_87 =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/14";
+  // The raw public key bytes and their CRC32C checksum returned by the fake KMS in the GetPublicKey
+  // response.
+  private static final ByteString PUBLIC_KEY_DATA = ByteString.copyFromUtf8("public key data");
+  private static final Int64Value PUBLIC_KEY_CRC32C =
+      Int64Value.of(Hashing.crc32c().hashBytes(PUBLIC_KEY_DATA.asReadOnlyByteBuffer()).padToLong());
   private static final byte[] dataForSign = "data for signing".getBytes(UTF_8);
   // The value of digest_crc32c for dataForSign
   private static final Int64Value REQUEST_DIGEST_CRC32C = Int64Value.of(62061691L);
@@ -117,6 +125,9 @@ public final class GcpKmsPublicKeySignTest {
         switch (request.getName()) {
           case KEY_NAME_FOR_DATA:
           case KEY_NAME_FOR_EXTERNAL_KEY:
+          case KEY_NAME_FOR_ML_DSA_44:
+          case KEY_NAME_FOR_ML_DSA_65:
+          case KEY_NAME_FOR_ML_DSA_87:
             {
               builder
                   .setVerifiedDataCrc32C(true)
@@ -193,8 +204,11 @@ public final class GcpKmsPublicKeySignTest {
       PublicKey.Builder builder =
           PublicKey.newBuilder()
               .setName(request.getName())
-              .setPem(KEY_PEM)
-              .setPemCrc32C(KEY_PEM_CRC32C);
+              .setPublicKeyFormat(request.getPublicKeyFormat())
+              .setPublicKey(
+                  ChecksummedData.newBuilder()
+                      .setData(PUBLIC_KEY_DATA)
+                      .setCrc32CChecksum(PUBLIC_KEY_CRC32C));
       switch (request.getName()) {
         case KEY_NAME_FOR_GET_PUBLIC_KEY_EXCEPTION:
           responseObserver.onError(new GeneralSecurityException("testing GetPublicKey exception."));
@@ -224,12 +238,30 @@ public final class GcpKmsPublicKeySignTest {
               .setProtectionLevel(ProtectionLevel.SOFTWARE)
               .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.HMAC_SHA256);
           break;
+        case KEY_NAME_FOR_ML_DSA_44:
+          builder
+              .setProtectionLevel(ProtectionLevel.SOFTWARE)
+              .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_44);
+          break;
+        case KEY_NAME_FOR_ML_DSA_65:
+          builder
+              .setProtectionLevel(ProtectionLevel.SOFTWARE)
+              .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_65);
+          break;
+        case KEY_NAME_FOR_ML_DSA_87:
+          builder
+              .setProtectionLevel(ProtectionLevel.SOFTWARE)
+              .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_87);
+          break;
         case KEY_NAME_FOR_PUBLIC_KEY_CHECKSUM_MISMATCH:
           builder
               .setProtectionLevel(ProtectionLevel.SOFTWARE)
               .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.EC_SIGN_ED25519)
-              // Corrupt the checksum so it no longer matches the PEM.
-              .setPemCrc32C(Int64Value.of(KEY_PEM_CRC32C.getValue() + 1));
+              // Corrupt the checksum so it no longer matches the public key.
+              .setPublicKey(
+                  ChecksummedData.newBuilder()
+                      .setData(PUBLIC_KEY_DATA)
+                      .setCrc32CChecksum(Int64Value.of(PUBLIC_KEY_CRC32C.getValue() + 1)));
           break;
         default:
           break;
@@ -464,6 +496,31 @@ public final class GcpKmsPublicKeySignTest {
     dataVerifier.verify(kmsSignature2, data2);
     assertThrows(GeneralSecurityException.class, () -> dataVerifier.verify(kmsSignature1, data2));
     assertThrows(GeneralSecurityException.class, () -> dataVerifier.verify(kmsSignature2, data1));
+  }
+
+  // ML-DSA algorithms operate on the data, not a digest.
+  private void assertMlDsaSigningWorksForData(String keyName) throws Exception {
+    PublicKeySign kmsSigner =
+        GcpKmsPublicKeySign.builder()
+            .setKeyName(keyName)
+            .setKeyManagementServiceClient(kmsClient)
+            .build();
+
+    byte[] signature = dataSigner.sign(dataForSign);
+    byte[] kmsSignature = kmsSigner.sign(dataForSign);
+    dataVerifier.verify(kmsSignature, dataForSign);
+    // We create deterministic signatures, check for equality.
+    assertThat(kmsSignature).isEqualTo(signature);
+    // The request must carry the data, not a digest.
+    assertThat(capturedSignRequest.getData().toByteArray()).isEqualTo(dataForSign);
+    assertThat(capturedSignRequest.hasDigest()).isFalse();
+  }
+
+  @Test
+  public void asymmetricSignWorksForMlDsa() throws Exception {
+    assertMlDsaSigningWorksForData(KEY_NAME_FOR_ML_DSA_44);
+    assertMlDsaSigningWorksForData(KEY_NAME_FOR_ML_DSA_65);
+    assertMlDsaSigningWorksForData(KEY_NAME_FOR_ML_DSA_87);
   }
 
   @Test

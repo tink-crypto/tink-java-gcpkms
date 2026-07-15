@@ -19,6 +19,7 @@ package com.google.crypto.tink.integration.gcpkms.internal;
 import static com.google.common.truth.Truth.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import com.google.cloud.kms.v1.ChecksummedData;
 import com.google.cloud.kms.v1.PublicKey;
 import com.google.common.hash.Hashing;
 import com.google.protobuf.ByteString;
@@ -37,11 +38,16 @@ public final class GcpKmsUtilTest {
   private static final String KEY_NAME_WITHOUT_VERSION =
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1";
 
-  private static final ByteString PUBLIC_KEY_PEM =
-      ByteString.copyFromUtf8(
-          "-----BEGIN PUBLIC KEY-----\n"
-              + "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE+d2qNlHlJ2tG+lA9rP+8Vj/l+l3/\n"
-              + "-----END PUBLIC KEY-----\n");
+  private static final ByteString PUBLIC_KEY_DATA = ByteString.copyFromUtf8("public key data");
+
+  // Wraps the given public key bytes together with their CRC32C checksum, as GetPublicKey returns.
+  private static ChecksummedData checksummedData(ByteString data) {
+    return ChecksummedData.newBuilder()
+        .setData(data)
+        .setCrc32CChecksum(
+            Int64Value.of(Hashing.crc32c().hashBytes(data.asReadOnlyByteBuffer()).padToLong()))
+        .build();
+  }
 
   // --- validateKeyName ---
 
@@ -86,19 +92,18 @@ public final class GcpKmsUtilTest {
 
   @Test
   public void verifyPublicKeyChecksum_matchingChecksum_doesNotThrow() throws Exception {
-    long correctCrc32c =
-        Hashing.crc32c().hashBytes(PUBLIC_KEY_PEM.asReadOnlyByteBuffer()).padToLong();
     PublicKey publicKey =
-        PublicKey.newBuilder()
-            .setPemBytes(PUBLIC_KEY_PEM)
-            .setPemCrc32C(Int64Value.of(correctCrc32c))
-            .build();
+        PublicKey.newBuilder().setPublicKey(checksummedData(PUBLIC_KEY_DATA)).build();
     GcpKmsUtil.verifyPublicKeyChecksum(publicKey);
   }
 
   @Test
   public void verifyPublicKeyChecksum_missingChecksum_throws() throws Exception {
-    PublicKey publicKey = PublicKey.newBuilder().setPemBytes(PUBLIC_KEY_PEM).build();
+    // ChecksummedData carries the data but no CRC32C checksum.
+    PublicKey publicKey =
+        PublicKey.newBuilder()
+            .setPublicKey(ChecksummedData.newBuilder().setData(PUBLIC_KEY_DATA))
+            .build();
     GeneralSecurityException e =
         assertThrows(
             GeneralSecurityException.class, () -> GcpKmsUtil.verifyPublicKeyChecksum(publicKey));
@@ -108,12 +113,14 @@ public final class GcpKmsUtilTest {
   @Test
   public void verifyPublicKeyChecksum_mismatchedChecksum_throws() throws Exception {
     long correctCrc32c =
-        Hashing.crc32c().hashBytes(PUBLIC_KEY_PEM.asReadOnlyByteBuffer()).padToLong();
+        Hashing.crc32c().hashBytes(PUBLIC_KEY_DATA.asReadOnlyByteBuffer()).padToLong();
     PublicKey publicKey =
         PublicKey.newBuilder()
-            .setPemBytes(PUBLIC_KEY_PEM)
-            // Corrupt the checksum so it no longer matches the public key.
-            .setPemCrc32C(Int64Value.of(correctCrc32c + 1))
+            .setPublicKey(
+                ChecksummedData.newBuilder()
+                    .setData(PUBLIC_KEY_DATA)
+                    // Corrupt the checksum so it no longer matches the public key.
+                    .setCrc32CChecksum(Int64Value.of(correctCrc32c + 1)))
             .build();
     GeneralSecurityException e =
         assertThrows(
