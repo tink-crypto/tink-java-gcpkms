@@ -67,17 +67,16 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
 
   @Override
   public byte[] sign(final byte[] data) throws GeneralSecurityException {
-    if (data.length > MAX_SIGN_DATA_SIZE) {
-      throw new GeneralSecurityException(
-          "The input data ("
-              + data.length
-              + " bytes) is larger than the allowed limit ("
-              + MAX_SIGN_DATA_SIZE
-              + " bytes).");
-    }
-
     AsymmetricSignRequest.Builder builder = AsymmetricSignRequest.newBuilder().setName(keyName);
     if (requiresDataForSign(publicKey.getAlgorithm(), publicKey.getProtectionLevel())) {
+      if (data.length > MAX_SIGN_DATA_SIZE) {
+        throw new GeneralSecurityException(
+            "The input data ("
+                + data.length
+                + " bytes) is larger than the allowed limit ("
+                + MAX_SIGN_DATA_SIZE
+                + " bytes).");
+      }
       builder
           .setData(ByteString.copyFrom(data))
           .setDataCrc32C(Int64Value.of(Hashing.crc32c().hashBytes(data).padToLong()));

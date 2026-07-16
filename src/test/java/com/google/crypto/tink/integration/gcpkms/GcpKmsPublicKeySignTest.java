@@ -459,6 +459,27 @@ public final class GcpKmsPublicKeySignTest {
   }
 
   @Test
+  public void signLargeDataSucceedsForDigestBasedAlgorithm() throws Exception {
+    PublicKeySign kmsSigner =
+        GcpKmsPublicKeySign.builder()
+            .setKeyName(KEY_NAME_FOR_DIGEST)
+            .setKeyManagementServiceClient(kmsClient)
+            .build();
+
+    byte[] tooLargeData = new byte[64 * 1024 + 1];
+    byte[] kmsSignature = kmsSigner.sign(tooLargeData);
+    MessageDigest messageDigest = MessageDigest.getInstance("SHA-256");
+    Digest.Builder digestBuilder = Digest.newBuilder();
+    byte[] digest =
+        digestBuilder
+            .setSha256(ByteString.copyFrom(messageDigest.digest(tooLargeData)))
+            .build()
+            .getSha256()
+            .toByteArray();
+    digestVerifier.verify(kmsSignature, digest);
+  }
+
+  @Test
   public void asymmetricSignWorksForDataExternalKey() throws Exception {
     PublicKeySign kmsSigner =
         GcpKmsPublicKeySign.builder()
