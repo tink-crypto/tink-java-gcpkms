@@ -44,6 +44,7 @@ import com.google.crypto.tink.signature.SignatureConfig;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Int64Value;
 import io.grpc.ManagedChannel;
+import io.grpc.Status;
 import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.stub.StreamObserver;
@@ -89,6 +90,10 @@ public final class GcpKmsPublicKeySignTest {
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/13";
   private static final String KEY_NAME_FOR_ML_DSA_87 =
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/14";
+  private static final String KEY_NAME_FOR_SLH_DSA =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/15";
+  private static final String KEY_NAME_FOR_HASH_SLH_DSA =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/16";
   // The raw public key bytes and their CRC32C checksum returned by the fake KMS in the GetPublicKey
   // response.
   private static final ByteString PUBLIC_KEY_DATA = ByteString.copyFromUtf8("public key data");
@@ -128,6 +133,7 @@ public final class GcpKmsPublicKeySignTest {
           case KEY_NAME_FOR_ML_DSA_44:
           case KEY_NAME_FOR_ML_DSA_65:
           case KEY_NAME_FOR_ML_DSA_87:
+          case KEY_NAME_FOR_SLH_DSA:
             {
               builder
                   .setVerifiedDataCrc32C(true)
@@ -162,6 +168,7 @@ public final class GcpKmsPublicKeySignTest {
               break;
             }
           case KEY_NAME_FOR_DIGEST:
+          case KEY_NAME_FOR_HASH_SLH_DSA:
             {
               signature = digestSigner.sign(request.getDigest().getSha256().toByteArray());
               signatureCrc32c = Hashing.crc32c().hashBytes(signature).padToLong();
@@ -201,6 +208,29 @@ public final class GcpKmsPublicKeySignTest {
     @Override
     public void getPublicKey(
         GetPublicKeyRequest request, StreamObserver<PublicKey> responseObserver) {
+      // SLH-DSA keys do not support PEM; KMS only returns them in NIST_PQC format.
+      boolean isSlhDsa =
+          request.getName().equals(KEY_NAME_FOR_SLH_DSA)
+              || request.getName().equals(KEY_NAME_FOR_HASH_SLH_DSA);
+      if (isSlhDsa && request.getPublicKeyFormat() != PublicKey.PublicKeyFormat.NIST_PQC) {
+        responseObserver.onError(
+            Status.INVALID_ARGUMENT
+                .withDescription("Only NIST_PQC format is supported for SLH-DSA.")
+                .asRuntimeException());
+        return;
+      }
+      boolean isPqc =
+          isSlhDsa
+              || request.getName().equals(KEY_NAME_FOR_ML_DSA_44)
+              || request.getName().equals(KEY_NAME_FOR_ML_DSA_65)
+              || request.getName().equals(KEY_NAME_FOR_ML_DSA_87);
+      if (!isPqc && request.getPublicKeyFormat() == PublicKey.PublicKeyFormat.NIST_PQC) {
+        responseObserver.onError(
+            Status.INVALID_ARGUMENT
+                .withDescription("NIST_PQC format is not supported for this algorithm.")
+                .asRuntimeException());
+        return;
+      }
       PublicKey.Builder builder =
           PublicKey.newBuilder()
               .setName(request.getName())
@@ -252,6 +282,17 @@ public final class GcpKmsPublicKeySignTest {
           builder
               .setProtectionLevel(ProtectionLevel.SOFTWARE)
               .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_87);
+          break;
+        case KEY_NAME_FOR_SLH_DSA:
+          builder
+              .setProtectionLevel(ProtectionLevel.SOFTWARE)
+              .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_SLH_DSA_SHA2_128S);
+          break;
+        case KEY_NAME_FOR_HASH_SLH_DSA:
+          builder
+              .setProtectionLevel(ProtectionLevel.SOFTWARE)
+              .setAlgorithm(
+                  CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_HASH_SLH_DSA_SHA2_128S_SHA256);
           break;
         case KEY_NAME_FOR_PUBLIC_KEY_CHECKSUM_MISMATCH:
           builder
@@ -519,8 +560,8 @@ public final class GcpKmsPublicKeySignTest {
     assertThrows(GeneralSecurityException.class, () -> dataVerifier.verify(kmsSignature2, data1));
   }
 
-  // ML-DSA algorithms operate on the data, not a digest.
-  private void assertMlDsaSigningWorksForData(String keyName) throws Exception {
+  // Post-quantum data-mode algorithms (ML-DSA, SLH-DSA) forward the raw data to KMS, not a digest.
+  private void assertDataModeSigningWorks(String keyName) throws Exception {
     PublicKeySign kmsSigner =
         GcpKmsPublicKeySign.builder()
             .setKeyName(keyName)
@@ -538,10 +579,28 @@ public final class GcpKmsPublicKeySignTest {
   }
 
   @Test
-  public void asymmetricSignWorksForMlDsa() throws Exception {
-    assertMlDsaSigningWorksForData(KEY_NAME_FOR_ML_DSA_44);
-    assertMlDsaSigningWorksForData(KEY_NAME_FOR_ML_DSA_65);
-    assertMlDsaSigningWorksForData(KEY_NAME_FOR_ML_DSA_87);
+  public void asymmetricSignWorksForPqcAlgorithms() throws Exception {
+    assertDataModeSigningWorks(KEY_NAME_FOR_ML_DSA_44);
+    assertDataModeSigningWorks(KEY_NAME_FOR_ML_DSA_65);
+    assertDataModeSigningWorks(KEY_NAME_FOR_ML_DSA_87);
+    assertDataModeSigningWorks(KEY_NAME_FOR_SLH_DSA);
+  }
+
+  @Test
+  public void asymmetricSignWorksForHashSlhDsa() throws Exception {
+    PublicKeySign kmsSigner =
+        GcpKmsPublicKeySign.builder()
+            .setKeyName(KEY_NAME_FOR_HASH_SLH_DSA)
+            .setKeyManagementServiceClient(kmsClient)
+            .build();
+
+    byte[] kmsSignature = kmsSigner.sign(dataForSign);
+    byte[] expectedDigest = MessageDigest.getInstance("SHA-256").digest(dataForSign);
+    digestVerifier.verify(kmsSignature, expectedDigest);
+
+    assertThat(capturedSignRequest.getData().isEmpty()).isTrue();
+    assertThat(capturedSignRequest.hasDigest()).isTrue();
+    assertThat(capturedSignRequest.getDigest().getSha256().toByteArray()).isEqualTo(expectedDigest);
   }
 
   @Test

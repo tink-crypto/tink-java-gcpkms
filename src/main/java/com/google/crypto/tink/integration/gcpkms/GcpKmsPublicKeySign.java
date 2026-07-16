@@ -135,6 +135,8 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
       case PQ_SIGN_ML_DSA_44:
       case PQ_SIGN_ML_DSA_65:
       case PQ_SIGN_ML_DSA_87:
+      case PQ_SIGN_SLH_DSA_SHA2_128S:
+      case PQ_SIGN_HASH_SLH_DSA_SHA2_128S_SHA256:
         return true;
       default:
         return false;
@@ -156,6 +158,7 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
       case PQ_SIGN_ML_DSA_44:
       case PQ_SIGN_ML_DSA_65:
       case PQ_SIGN_ML_DSA_87:
+      case PQ_SIGN_SLH_DSA_SHA2_128S:
         return true;
       default:
         break;
@@ -205,6 +208,7 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
         case RSA_SIGN_PKCS1_2048_SHA256:
         case RSA_SIGN_PKCS1_3072_SHA256:
         case RSA_SIGN_PKCS1_4096_SHA256:
+        case PQ_SIGN_HASH_SLH_DSA_SHA2_128S_SHA256:
           messageDigest = MessageDigest.getInstance("SHA-256");
           digestBuilder.setSha256(ByteString.copyFrom(messageDigest.digest(data)));
           break;
@@ -227,19 +231,32 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
     return digestBuilder.build();
   }
 
-  /**Fetches the public key for {@code keyName} from KMS and verifies its integrity.*/
+  /**
+   * Fetches the public key for {@code keyName} from KMS and verifies its integrity.
+   *
+   * <p>The key is initially requested in PEM format, but also falls back to NIST_PQC format
+   * for keys that do not support PEM (e.g., SLH-DSA).
+   */
   private static PublicKey fetchPublicKey(KeyManagementServiceClient kmsClient, String keyName)
       throws GeneralSecurityException {
     PublicKey publicKey;
+    GetPublicKeyRequest.Builder requestBuilder = GetPublicKeyRequest.newBuilder().setName(keyName);
+
     try {
-      GetPublicKeyRequest request =
-          GetPublicKeyRequest.newBuilder()
-              .setName(keyName)
-              .setPublicKeyFormat(PublicKey.PublicKeyFormat.PEM)
-              .build();
-      publicKey = kmsClient.getPublicKey(request);
+      publicKey =
+          kmsClient.getPublicKey(
+              requestBuilder.setPublicKeyFormat(PublicKey.PublicKeyFormat.PEM).build());
     } catch (RuntimeException e) {
-      throw new GeneralSecurityException("The KMS GetPublicKey failed.", e);
+      if (e.getMessage() == null || !e.getMessage().contains("Only NIST_PQC format is supported")) {
+        throw new GeneralSecurityException("The KMS GetPublicKey failed.", e);
+      }
+      try {
+        publicKey =
+            kmsClient.getPublicKey(
+                requestBuilder.setPublicKeyFormat(PublicKey.PublicKeyFormat.NIST_PQC).build());
+      } catch (RuntimeException e2) {
+        throw new GeneralSecurityException("The KMS GetPublicKey failed.", e2);
+      }
     }
 
     // Verify the integrity of the fetched public key before relying on it.
