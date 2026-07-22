@@ -128,6 +128,29 @@ java_test(
 )
 
 java_test(
+    name = "GcpKmsPublicKeyVerifyTest",
+    size = "small",
+    srcs = ["GcpKmsPublicKeyVerifyTest.java"],
+    deps = [
+        "@tink_java//src/main/java/com/google/crypto/tink:public_key_verify",
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_public_key_verify",
+        "@maven//:com_google_api_gax",
+        "@maven//:com_google_api_gax_grpc",
+        "@maven//:com_google_api_grpc_grpc_google_cloud_kms_v1",
+        "@maven//:com_google_api_grpc_proto_google_cloud_kms_v1",
+        "@maven//:com_google_cloud_google_cloud_kms",
+        "@maven//:com_google_guava_guava",
+        "@maven//:com_google_protobuf_protobuf_java",
+        "@maven//:com_google_truth_truth",
+        "@maven//:io_grpc_grpc_api",
+        "@maven//:io_grpc_grpc_inprocess",
+        "@maven//:io_grpc_grpc_stub",
+        "@maven//:io_grpc_grpc_testing",
+        "@maven//:junit_junit",
+    ],
+)
+
+java_test(
     name = "GcpKmsMacTest",
     size = "small",
     srcs = ["GcpKmsMacTest.java"],
