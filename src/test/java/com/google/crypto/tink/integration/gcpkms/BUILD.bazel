@@ -108,6 +108,7 @@ java_test(
         "@tink_java//src/main/java/com/google/crypto/tink:registry_cluster",
         "@tink_java//src/main/java/com/google/crypto/tink:registry_configuration",
         "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_public_key_sign",
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms/internal:gcp_kms_util",
         "@tink_java//src/main/java/com/google/crypto/tink/signature:predefined_signature_parameters",
         "@tink_java//src/main/java/com/google/crypto/tink/signature:signature_config",
         "@maven//:com_google_api_gax",

@@ -8,8 +8,12 @@ java_library(
     name = "gcp_kms_util",
     srcs = ["GcpKmsUtil.java"],
     deps = [
+        "@tink_java//src/main/java/com/google/crypto/tink:accesses_partial_key",
+        "@tink_java//src/main/java/com/google/crypto/tink:pem_key_type",
         "@maven//:com_google_api_grpc_proto_google_cloud_kms_v1",
         "@maven//:com_google_cloud_google_cloud_kms",
+        "@maven//:com_google_code_findbugs_jsr305",
         "@maven//:com_google_guava_guava",
+        "@maven//:com_google_protobuf_protobuf_java",
     ],
 )

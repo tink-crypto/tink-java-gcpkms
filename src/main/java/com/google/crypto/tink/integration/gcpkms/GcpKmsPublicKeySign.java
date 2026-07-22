@@ -20,13 +20,17 @@ import com.google.cloud.kms.v1.AsymmetricSignRequest;
 import com.google.cloud.kms.v1.AsymmetricSignResponse;
 import com.google.cloud.kms.v1.CryptoKeyVersion;
 import com.google.cloud.kms.v1.Digest;
-import com.google.cloud.kms.v1.GetPublicKeyRequest;
 import com.google.cloud.kms.v1.KeyManagementServiceClient;
 import com.google.cloud.kms.v1.ProtectionLevel;
 import com.google.cloud.kms.v1.PublicKey;
 import com.google.common.hash.Hashing;
+import com.google.crypto.tink.AccessesPartialKey;
+import com.google.crypto.tink.KeysetHandle;
+import com.google.crypto.tink.PemKeyType;
 import com.google.crypto.tink.PublicKeySign;
 import com.google.crypto.tink.integration.gcpkms.internal.GcpKmsUtil;
+import com.google.crypto.tink.signature.MlDsaPublicKey;
+import com.google.crypto.tink.signature.SignaturePemKeysetReader;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Int64Value;
@@ -176,6 +180,49 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
     return false;
   }
 
+  /**
+   * Returns the {@link PemKeyType} for parsing an ML-DSA public key PEM, or {@code null} if {@code
+   * algorithm} is not an ML-DSA algorithm.
+   */
+  @Nullable
+  private static PemKeyType mlDsaPemKeyType(CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm) {
+    switch (algorithm) {
+      case PQ_SIGN_ML_DSA_44:
+        return PemKeyType.ML_DSA_44;
+      case PQ_SIGN_ML_DSA_65:
+        return PemKeyType.ML_DSA_65;
+      case PQ_SIGN_ML_DSA_87:
+        return PemKeyType.ML_DSA_87;
+      default:
+        return null;
+    }
+  }
+
+  /**
+   * Recovers the raw ML-DSA public key from the PEM-encoded SubjectPublicKeyInfo in {@code
+   * publicKey} and returns a copy carrying those raw bytes in NIST_PQC form. Tink validates the key
+   * length while parsing, so no separate size check is required.
+   */
+  @AccessesPartialKey
+  private static PublicKey pemToRawMlDsaPublicKey(PublicKey publicKey, PemKeyType pemKeyType)
+      throws GeneralSecurityException {
+    String pem = publicKey.getPublicKey().getData().toStringUtf8();
+    byte[] rawKey;
+    try {
+      KeysetHandle handle =
+          SignaturePemKeysetReader.newBuilder().addPem(pem, pemKeyType).buildPublicKeysetHandle();
+      rawKey = ((MlDsaPublicKey) handle.getAt(0).getKey()).getSerializedPublicKey().toByteArray();
+    } catch (GeneralSecurityException | RuntimeException e) {
+      throw new GeneralSecurityException(
+          "Failed to parse the ML-DSA public key for " + publicKey.getAlgorithm() + ".", e);
+    }
+    ByteString rawKeyData = ByteString.copyFrom(rawKey);
+    return publicKey.toBuilder()
+        .setPublicKeyFormat(PublicKey.PublicKeyFormat.NIST_PQC)
+        .setPublicKey(GcpKmsUtil.checksummedData(rawKeyData))
+        .build();
+  }
+
   private static ByteString getDigestBytes(Digest digest) throws GeneralSecurityException {
     switch (digest.getDigestCase()) {
       case SHA256:
@@ -231,43 +278,6 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
     return digestBuilder.build();
   }
 
-  /**
-   * Fetches the public key for {@code keyName} from KMS and verifies its integrity.
-   *
-   * <p>The key is initially requested in PEM format, but also falls back to NIST_PQC format
-   * for keys that do not support PEM (e.g., SLH-DSA).
-   */
-  private static PublicKey fetchPublicKey(KeyManagementServiceClient kmsClient, String keyName)
-      throws GeneralSecurityException {
-    PublicKey publicKey;
-    GetPublicKeyRequest.Builder requestBuilder = GetPublicKeyRequest.newBuilder().setName(keyName);
-
-    try {
-      publicKey =
-          kmsClient.getPublicKey(
-              requestBuilder.setPublicKeyFormat(PublicKey.PublicKeyFormat.PEM).build());
-    } catch (RuntimeException e) {
-      if (e.getMessage() == null || !e.getMessage().contains("Only NIST_PQC format is supported")) {
-        throw new GeneralSecurityException("The KMS GetPublicKey failed.", e);
-      }
-      try {
-        publicKey =
-            kmsClient.getPublicKey(
-                requestBuilder.setPublicKeyFormat(PublicKey.PublicKeyFormat.NIST_PQC).build());
-      } catch (RuntimeException e2) {
-        throw new GeneralSecurityException("The KMS GetPublicKey failed.", e2);
-      }
-    }
-
-    // Verify the integrity of the fetched public key before relying on it.
-    if (!publicKey.getName().equals(keyName)) {
-      throw new GeneralSecurityException(
-          "The key name in the response does not match the requested key name.");
-    }
-    GcpKmsUtil.verifyPublicKeyChecksum(publicKey);
-    return publicKey;
-  }
-
   /** A Builder to create a {@link PublicKeySign} that communicates with Cloud KMS via gRPC. */
   public static final class Builder {
     @Nullable private String keyName = null;
@@ -298,7 +308,13 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
 
       // Retrieve the related public key from KMS, that contains information on
       // how to prepare the later AsymmetricSign requests.
-      PublicKey publicKey = fetchPublicKey(kmsClient, keyName);
+      PublicKey publicKey = GcpKmsUtil.fetchPublicKey(kmsClient, keyName);
+
+      // ML-DSA is returned in PEM, but consumers need the raw key bytes.
+      PemKeyType pemKeyType = mlDsaPemKeyType(publicKey.getAlgorithm());
+      if (pemKeyType != null) {
+        publicKey = pemToRawMlDsaPublicKey(publicKey, pemKeyType);
+      }
       if (!isSupported(publicKey.getAlgorithm())) {
         throw new GeneralSecurityException(
             "The algorithm " + publicKey.getAlgorithm() + " is not supported.");
