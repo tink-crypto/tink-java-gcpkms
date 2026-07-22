@@ -99,6 +99,14 @@ public final class GcpKmsPublicKeySignTest {
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/16";
   private static final String KEY_NAME_FOR_ML_DSA_INVALID_PEM =
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/17";
+  private static final String KEY_NAME_FOR_ML_DSA_44_EXTERNAL_MU =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/18";
+  private static final String KEY_NAME_FOR_ML_DSA_65_EXTERNAL_MU =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/19";
+  private static final String KEY_NAME_FOR_ML_DSA_87_EXTERNAL_MU =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/20";
+  private static final String KEY_NAME_FOR_ML_DSA_EXTERNAL_MU_INVALID_KEY =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/21";
   // The raw public key bytes and their CRC32C checksum returned by the fake KMS in the GetPublicKey
   // response.
   private static final ByteString PUBLIC_KEY_DATA = ByteString.copyFromUtf8("public key data");
@@ -118,6 +126,20 @@ public final class GcpKmsPublicKeySignTest {
       "308207b2300b0609608648016503040312038207a100";
   private static final String ML_DSA_87_SPKI_PREAMBLE =
       "30820a32300b060960864801650304031303820a2100";
+  // Known-answer values for the external-mu message representative:
+  //   tr = SHAKE256(pk, 64)
+  //   mu = SHAKE256(tr || 0x00 || 0x00 || dataForSign, 64) (FIPS-204 section 6.2, empty context)
+  // Here pk is the raw ML-DSA public key returned by mlDsaTestPublicKey(ML_DSA_*_PUBLIC_KEY_SIZE)
+  // (with pk[i] = (byte) (i % 251)). Computed independently with Python's hashlib.shake_256.
+  private static final String ML_DSA_44_EXTERNAL_MU_HEX =
+      "4856f58825ea886142257740202561dd56c874fe50c7fa2644fcb76149544bff"
+          + "a1e8e35b5d34d3760078244ea348b08173fc6f6ca3ccfbb87e6d230cb6054130";
+  private static final String ML_DSA_65_EXTERNAL_MU_HEX =
+      "8af79318b6d333d59890db6895be53bcfc663970a1fd4a228fdcc2fac916475c"
+          + "a4778038298e2f2661f9437d819756579a5a91f9a16c7475e0193e7068b99e51";
+  private static final String ML_DSA_87_EXTERNAL_MU_HEX =
+      "e6306d86c4ef1b8f03aa4a9c4c1c50bcbc580ac5209ecc714fc4a08b7b4265a7"
+          + "5322712923d71c2fb203a85944e09b44f0e3c7d90d7b43ad6c3145466cd6a858";
 
   private PublicKeySign dataSigner;
   private PublicKeySign digestSigner;
@@ -153,6 +175,18 @@ public final class GcpKmsPublicKeySignTest {
             {
               builder
                   .setVerifiedDataCrc32C(true)
+                  .setSignature(ByteString.copyFrom(signature))
+                  .setSignatureCrc32C(Int64Value.of(signatureCrc32c));
+              break;
+            }
+          case KEY_NAME_FOR_ML_DSA_44_EXTERNAL_MU:
+          case KEY_NAME_FOR_ML_DSA_65_EXTERNAL_MU:
+          case KEY_NAME_FOR_ML_DSA_87_EXTERNAL_MU:
+            {
+              signature = dataSigner.sign(request.getDigest().getExternalMu().toByteArray());
+              signatureCrc32c = Hashing.crc32c().hashBytes(signature).padToLong();
+              builder
+                  .setVerifiedDigestCrc32C(true)
                   .setSignature(ByteString.copyFrom(signature))
                   .setSignatureCrc32C(Int64Value.of(signatureCrc32c));
               break;
@@ -240,7 +274,11 @@ public final class GcpKmsPublicKeySignTest {
               || request.getName().equals(KEY_NAME_FOR_ML_DSA_44)
               || request.getName().equals(KEY_NAME_FOR_ML_DSA_65)
               || request.getName().equals(KEY_NAME_FOR_ML_DSA_87)
-              || request.getName().equals(KEY_NAME_FOR_ML_DSA_INVALID_PEM);
+              || request.getName().equals(KEY_NAME_FOR_ML_DSA_INVALID_PEM)
+              || request.getName().equals(KEY_NAME_FOR_ML_DSA_44_EXTERNAL_MU)
+              || request.getName().equals(KEY_NAME_FOR_ML_DSA_65_EXTERNAL_MU)
+              || request.getName().equals(KEY_NAME_FOR_ML_DSA_87_EXTERNAL_MU)
+              || request.getName().equals(KEY_NAME_FOR_ML_DSA_EXTERNAL_MU_INVALID_KEY);
       if (!isPqc && request.getPublicKeyFormat() == PublicKey.PublicKeyFormat.NIST_PQC) {
         responseObserver.onError(
             Status.INVALID_ARGUMENT
@@ -330,6 +368,42 @@ public final class GcpKmsPublicKeySignTest {
               .setProtectionLevel(ProtectionLevel.SOFTWARE)
               .setAlgorithm(
                   CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_HASH_SLH_DSA_SHA2_128S_SHA256);
+          break;
+        case KEY_NAME_FOR_ML_DSA_44_EXTERNAL_MU:
+          builder
+              .setProtectionLevel(ProtectionLevel.SOFTWARE)
+              .setAlgorithm(
+                  CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_44_EXTERNAL_MU)
+              .setPublicKey(
+                  mlDsaPublicKeyPem(
+                      ML_DSA_44_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_44_PUBLIC_KEY_SIZE)));
+          break;
+        case KEY_NAME_FOR_ML_DSA_65_EXTERNAL_MU:
+          builder
+              .setProtectionLevel(ProtectionLevel.SOFTWARE)
+              .setAlgorithm(
+                  CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_65_EXTERNAL_MU)
+              .setPublicKey(
+                  mlDsaPublicKeyPem(
+                      ML_DSA_65_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_65_PUBLIC_KEY_SIZE)));
+          break;
+        case KEY_NAME_FOR_ML_DSA_87_EXTERNAL_MU:
+          builder
+              .setProtectionLevel(ProtectionLevel.SOFTWARE)
+              .setAlgorithm(
+                  CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_87_EXTERNAL_MU)
+              .setPublicKey(
+                  mlDsaPublicKeyPem(
+                      ML_DSA_87_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_87_PUBLIC_KEY_SIZE)));
+          break;
+        case KEY_NAME_FOR_ML_DSA_EXTERNAL_MU_INVALID_KEY:
+          builder
+              .setProtectionLevel(ProtectionLevel.SOFTWARE)
+              .setAlgorithm(
+                  CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_65_EXTERNAL_MU)
+              .setPublicKey(
+                  mlDsaPublicKeyPem(
+                      ML_DSA_65_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_65_PUBLIC_KEY_SIZE - 1)));
           break;
         case KEY_NAME_FOR_PUBLIC_KEY_CHECKSUM_MISMATCH:
           builder
@@ -743,6 +817,82 @@ public final class GcpKmsPublicKeySignTest {
     Digest digest = Digest.newBuilder().setExternalMu(muBytes).build();
     ByteString result = (ByteString) getDigestBytesMethod.invoke(null, digest);
     assertThat(result).isEqualTo(muBytes);
+  }
+
+  // External-mu ML-DSA keys sign the SHAKE-256 message representative (mu) of the data, computed
+  // from the raw public key, and carry it in the request digest instead of the data.
+  private void assertExternalMuSigningWorks(String keyName, String expectedMuHex) throws Exception {
+    PublicKeySign kmsSigner =
+        GcpKmsPublicKeySign.builder()
+            .setKeyName(keyName)
+            .setKeyManagementServiceClient(kmsClient)
+            .build();
+
+    byte[] unused = kmsSigner.sign(dataForSign);
+
+    // The request must carry the 64-byte external mu (with its checksum) and no data.
+    byte[] expectedMu = BaseEncoding.base16().lowerCase().decode(expectedMuHex);
+    assertThat(capturedSignRequest.getName()).isEqualTo(keyName);
+    assertThat(capturedSignRequest.getData().isEmpty()).isTrue();
+    assertThat(capturedSignRequest.hasDataCrc32C()).isFalse();
+    assertThat(capturedSignRequest.hasDigest()).isTrue();
+    assertThat(capturedSignRequest.getDigest().getDigestCase())
+        .isEqualTo(Digest.DigestCase.EXTERNAL_MU);
+    assertThat(capturedSignRequest.getDigest().getExternalMu().toByteArray()).isEqualTo(expectedMu);
+    assertThat(capturedSignRequest.hasDigestCrc32C()).isTrue();
+    assertThat(capturedSignRequest.getDigestCrc32C().getValue())
+        .isEqualTo(Hashing.crc32c().hashBytes(expectedMu).padToLong());
+  }
+
+  @Test
+  public void asymmetricSignWorksForMlDsaExternalMu() throws Exception {
+    assertExternalMuSigningWorks(KEY_NAME_FOR_ML_DSA_44_EXTERNAL_MU, ML_DSA_44_EXTERNAL_MU_HEX);
+    assertExternalMuSigningWorks(KEY_NAME_FOR_ML_DSA_65_EXTERNAL_MU, ML_DSA_65_EXTERNAL_MU_HEX);
+    assertExternalMuSigningWorks(KEY_NAME_FOR_ML_DSA_87_EXTERNAL_MU, ML_DSA_87_EXTERNAL_MU_HEX);
+  }
+
+  @Test
+  public void buildFailsForExternalMuInvalidKeySize() throws Exception {
+    // The wrong-length key fails Tink's ML-DSA PEM length check while precomputing tr at build().
+    GeneralSecurityException e =
+        assertThrows(
+            GeneralSecurityException.class,
+            () ->
+                GcpKmsPublicKeySign.builder()
+                    .setKeyName(KEY_NAME_FOR_ML_DSA_EXTERNAL_MU_INVALID_KEY)
+                    .setKeyManagementServiceClient(kmsClient)
+                    .build());
+    assertThat(e).hasMessageThat().contains("Failed to parse the ML-DSA public key");
+  }
+
+  @Test
+  public void asymmetricSignExternalMuProducesDifferentMuForDifferentDataAndKeys()
+      throws Exception {
+    PublicKeySign signer44 =
+        GcpKmsPublicKeySign.builder()
+            .setKeyName(KEY_NAME_FOR_ML_DSA_44_EXTERNAL_MU)
+            .setKeyManagementServiceClient(kmsClient)
+            .build();
+    PublicKeySign signer65 =
+        GcpKmsPublicKeySign.builder()
+            .setKeyName(KEY_NAME_FOR_ML_DSA_65_EXTERNAL_MU)
+            .setKeyManagementServiceClient(kmsClient)
+            .build();
+
+    byte[] data1 = "data1 for external mu".getBytes(UTF_8);
+    byte[] data2 = "data2 for external mu".getBytes(UTF_8);
+
+    byte[] unused = signer44.sign(data1);
+    ByteString mu44Data1 = capturedSignRequest.getDigest().getExternalMu();
+
+    unused = signer44.sign(data2);
+    ByteString mu44Data2 = capturedSignRequest.getDigest().getExternalMu();
+
+    unused = signer65.sign(data1);
+    ByteString mu65Data1 = capturedSignRequest.getDigest().getExternalMu();
+
+    assertThat(mu44Data1).isNotEqualTo(mu44Data2);
+    assertThat(mu44Data1).isNotEqualTo(mu65Data1);
   }
 
   @Test

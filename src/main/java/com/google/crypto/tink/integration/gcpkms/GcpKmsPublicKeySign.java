@@ -38,15 +38,27 @@ import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import javax.annotation.Nullable;
+import org.bouncycastle.crypto.digests.SHAKEDigest;
 
 /**
  * A {@link PublicKeySign} that forwards asymmetric sign requests to a key in <a
  * href="https://cloud.google.com/kms/">Google Cloud KMS</a> using GRPC.
+ *
+ * <p>Signing with external-mu ML-DSA keys requires the optional BouncyCastle dependency ({@code
+ * org.bouncycastle:bcprov-jdk18on}) on the runtime classpath; it is used to compute the SHAKE-256
+ * message representative. Other algorithms do not need it, and {@link Builder#build} fails for
+ * external-mu keys when it is absent.
  */
 public final class GcpKmsPublicKeySign implements PublicKeySign {
 
   /** Maximum size of the data that can be signed. */
   private static final int MAX_SIGN_DATA_SIZE = 64 * 1024;
+
+  /** Output size in bytes of the SHAKE-256 public key hash (tr in FIPS 204). */
+  private static final int ML_DSA_PUBLIC_KEY_HASH_BYTES = 64;
+
+  /** Output size in bytes of the SHAKE-256 message representative (mu in FIPS 204). */
+  private static final int ML_DSA_EXTERNAL_MU_BYTES = 64;
 
   /** A GRPC-based client to communicate with Google Cloud KMS. */
   private final KeyManagementServiceClient kmsClient;
@@ -62,11 +74,36 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
   /** Read from KMS, publicKey contains the public key itself and some information about the key. */
   private final PublicKey publicKey;
 
+  /** SHAKE-256 hash of an external-mu ML-DSA public key, or null for all other algorithms. */
+  @Nullable private final byte[] mlDsaPublicKeyHash;
+
   private GcpKmsPublicKeySign(
-      KeyManagementServiceClient kmsClient, String keyName, PublicKey publicKey) {
+      KeyManagementServiceClient kmsClient,
+      String keyName,
+      PublicKey publicKey,
+      @Nullable byte[] mlDsaPublicKeyHash) {
     this.keyName = keyName;
     this.kmsClient = kmsClient;
     this.publicKey = publicKey;
+    this.mlDsaPublicKeyHash = mlDsaPublicKeyHash;
+  }
+
+  /**
+   * Verifies that BouncyCastle is available on the runtime classpath. It is an optional dependency
+   * required only for external-mu ML-DSA signing; see the class documentation.
+   *
+   * <p>This check must not reference the BouncyCastle types directly, so that a clear exception is
+   * thrown instead of a {@link NoClassDefFoundError} when the dependency is missing.
+   */
+  private static void checkBouncyCastleAvailable() throws GeneralSecurityException {
+    try {
+      Class<?> unused = Class.forName("org.bouncycastle.crypto.digests.SHAKEDigest");
+    } catch (ClassNotFoundException e) {
+      throw new GeneralSecurityException(
+          "External-mu ML-DSA signing requires the optional BouncyCastle dependency"
+              + " (org.bouncycastle:bcprov-jdk18on) on the runtime classpath.",
+          e);
+    }
   }
 
   @Override
@@ -139,8 +176,24 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
       case PQ_SIGN_ML_DSA_44:
       case PQ_SIGN_ML_DSA_65:
       case PQ_SIGN_ML_DSA_87:
+      case PQ_SIGN_ML_DSA_44_EXTERNAL_MU:
+      case PQ_SIGN_ML_DSA_65_EXTERNAL_MU:
+      case PQ_SIGN_ML_DSA_87_EXTERNAL_MU:
       case PQ_SIGN_SLH_DSA_SHA2_128S:
       case PQ_SIGN_HASH_SLH_DSA_SHA2_128S_SHA256:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  /** Returns whether the algorithm expects an externally computed ML-DSA message representative. */
+  private static boolean isMlDsaExternalMuAlgorithm(
+      CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm) {
+    switch (algorithm) {
+      case PQ_SIGN_ML_DSA_44_EXTERNAL_MU:
+      case PQ_SIGN_ML_DSA_65_EXTERNAL_MU:
+      case PQ_SIGN_ML_DSA_87_EXTERNAL_MU:
         return true;
       default:
         return false;
@@ -188,10 +241,13 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
   private static PemKeyType mlDsaPemKeyType(CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm) {
     switch (algorithm) {
       case PQ_SIGN_ML_DSA_44:
+      case PQ_SIGN_ML_DSA_44_EXTERNAL_MU:
         return PemKeyType.ML_DSA_44;
       case PQ_SIGN_ML_DSA_65:
+      case PQ_SIGN_ML_DSA_65_EXTERNAL_MU:
         return PemKeyType.ML_DSA_65;
       case PQ_SIGN_ML_DSA_87:
+      case PQ_SIGN_ML_DSA_87_EXTERNAL_MU:
         return PemKeyType.ML_DSA_87;
       default:
         return null;
@@ -223,6 +279,38 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
         .build();
   }
 
+  /** Computes {@code tr = SHAKE256(public key, 64)} for an external-mu ML-DSA key. */
+  private static byte[] computeMlDsaPublicKeyHash(PublicKey publicKey)
+      throws GeneralSecurityException {
+    byte[] publicKeyBytes = publicKey.getPublicKey().getData().toByteArray();
+    SHAKEDigest shakeDigest = new SHAKEDigest(256);
+    shakeDigest.update(publicKeyBytes, 0, publicKeyBytes.length);
+    byte[] publicKeyHash = new byte[ML_DSA_PUBLIC_KEY_HASH_BYTES];
+    shakeDigest.doFinal(publicKeyHash, 0, publicKeyHash.length);
+    return publicKeyHash;
+  }
+
+  /**
+   * Computes the ML-DSA message representative mu for the empty context used by Cloud KMS.
+   *
+   * <p>Per FIPS 204, {@code mu = SHAKE256(tr || 0x00 || 0x00 || data, 64)}, where {@code tr} is the
+   * SHAKE-256 hash of the encoded public key.
+   */
+  private byte[] computeMlDsaExternalMu(byte[] data) throws GeneralSecurityException {
+    if (mlDsaPublicKeyHash == null) {
+      throw new GeneralSecurityException("The ML-DSA public key hash is not available.");
+    }
+
+    SHAKEDigest shakeDigest = new SHAKEDigest(256);
+    shakeDigest.update(mlDsaPublicKeyHash, 0, mlDsaPublicKeyHash.length);
+    shakeDigest.update((byte) 0);
+    shakeDigest.update((byte) 0);
+    shakeDigest.update(data, 0, data.length);
+    byte[] mu = new byte[ML_DSA_EXTERNAL_MU_BYTES];
+    shakeDigest.doFinal(mu, 0, mu.length);
+    return mu;
+  }
+
   private static ByteString getDigestBytes(Digest digest) throws GeneralSecurityException {
     switch (digest.getDigestCase()) {
       case SHA256:
@@ -240,8 +328,7 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
   }
 
   /** Finds out and returns the proper DigestCase for the given algorithm. */
-  private static Digest computeDigest(
-      byte[] data, CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm)
+  private Digest computeDigest(byte[] data, CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm)
       throws GeneralSecurityException {
     MessageDigest messageDigest;
     Digest.Builder digestBuilder = Digest.newBuilder();
@@ -267,6 +354,11 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
         case RSA_SIGN_PKCS1_4096_SHA512:
           messageDigest = MessageDigest.getInstance("SHA-512");
           digestBuilder.setSha512(ByteString.copyFrom(messageDigest.digest(data)));
+          break;
+        case PQ_SIGN_ML_DSA_44_EXTERNAL_MU:
+        case PQ_SIGN_ML_DSA_65_EXTERNAL_MU:
+        case PQ_SIGN_ML_DSA_87_EXTERNAL_MU:
+          digestBuilder.setExternalMu(ByteString.copyFrom(computeMlDsaExternalMu(data)));
           break;
         default:
           throw new GeneralSecurityException("The given algorithm does not support digests.");
@@ -320,7 +412,13 @@ public final class GcpKmsPublicKeySign implements PublicKeySign {
             "The algorithm " + publicKey.getAlgorithm() + " is not supported.");
       }
 
-      return new GcpKmsPublicKeySign(kmsClient, keyName, publicKey);
+      byte[] mlDsaPublicKeyHash = null;
+      if (isMlDsaExternalMuAlgorithm(publicKey.getAlgorithm())) {
+        checkBouncyCastleAvailable();
+        mlDsaPublicKeyHash = computeMlDsaPublicKeyHash(publicKey);
+      }
+
+      return new GcpKmsPublicKeySign(kmsClient, keyName, publicKey, mlDsaPublicKeyHash);
     }
   }
 
