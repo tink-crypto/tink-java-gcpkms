@@ -100,6 +100,12 @@ public final class GcpKmsPublicKeyVerifyTest {
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/18";
   private static final String KEY_NAME_HASH_SLH_DSA =
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/19";
+  private static final String KEY_NAME_ML_DSA_44_EXTERNAL_MU =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/20";
+  private static final String KEY_NAME_ML_DSA_65_EXTERNAL_MU =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/21";
+  private static final String KEY_NAME_ML_DSA_87_EXTERNAL_MU =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/22";
 
   private static final byte[] signData = "data".getBytes(UTF_8);
 
@@ -804,6 +810,28 @@ public final class GcpKmsPublicKeyVerifyTest {
                   ByteString.copyFrom(Base64.getDecoder().decode(ML_DSA_87_PUBLIC_KEY)));
           algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_87;
           break;
+        case KEY_NAME_ML_DSA_44_EXTERNAL_MU:
+          // External-mu keys share the base ML-DSA public key and are served in the same PEM form.
+          data =
+              mlDsaPublicKeyPem(
+                  ML_DSA_44_SPKI_PREAMBLE,
+                  ByteString.copyFrom(Base64.getDecoder().decode(ML_DSA_44_PUBLIC_KEY)));
+          algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_44_EXTERNAL_MU;
+          break;
+        case KEY_NAME_ML_DSA_65_EXTERNAL_MU:
+          data =
+              mlDsaPublicKeyPem(
+                  ML_DSA_65_SPKI_PREAMBLE,
+                  ByteString.copyFrom(Base64.getDecoder().decode(ML_DSA_65_PUBLIC_KEY)));
+          algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_65_EXTERNAL_MU;
+          break;
+        case KEY_NAME_ML_DSA_87_EXTERNAL_MU:
+          data =
+              mlDsaPublicKeyPem(
+                  ML_DSA_87_SPKI_PREAMBLE,
+                  ByteString.copyFrom(Base64.getDecoder().decode(ML_DSA_87_PUBLIC_KEY)));
+          algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_87_EXTERNAL_MU;
+          break;
         case KEY_NAME_SLH_DSA_128S:
           // Unlike ML-DSA, SLH-DSA and Pre-hash SLH-DSA keys are not available in PEM format, so
           // KMS rejects the initial PEM request; the library retries in NIST_PQC format.
@@ -991,6 +1019,9 @@ public final class GcpKmsPublicKeyVerifyTest {
         new VerifyCase(KEY_NAME_ML_DSA_65, ML_DSA_65_SIGNATURE),
         new VerifyCase(KEY_NAME_ML_DSA_87, ML_DSA_87_SIGNATURE),
         new VerifyCase(KEY_NAME_SLH_DSA_128S, SLH_DSA_SIGNATURE),
+        new VerifyCase(KEY_NAME_ML_DSA_44_EXTERNAL_MU, ML_DSA_44_SIGNATURE),
+        new VerifyCase(KEY_NAME_ML_DSA_65_EXTERNAL_MU, ML_DSA_65_SIGNATURE),
+        new VerifyCase(KEY_NAME_ML_DSA_87_EXTERNAL_MU, ML_DSA_87_SIGNATURE),
       };
 
   @Theory

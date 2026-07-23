@@ -93,10 +93,13 @@ public final class GcpKmsPublicKeyVerify implements PublicKeyVerify {
       case RSA_SIGN_PSS_4096_SHA512:
         return PemKeyType.RSA_PSS_4096_SHA512;
       case PQ_SIGN_ML_DSA_44:
+      case PQ_SIGN_ML_DSA_44_EXTERNAL_MU:
         return PemKeyType.ML_DSA_44;
       case PQ_SIGN_ML_DSA_65:
+      case PQ_SIGN_ML_DSA_65_EXTERNAL_MU:
         return PemKeyType.ML_DSA_65;
       case PQ_SIGN_ML_DSA_87:
+      case PQ_SIGN_ML_DSA_87_EXTERNAL_MU:
         return PemKeyType.ML_DSA_87;
       default:
         throw new GeneralSecurityException("The algorithm " + algorithm + " is not supported.");
