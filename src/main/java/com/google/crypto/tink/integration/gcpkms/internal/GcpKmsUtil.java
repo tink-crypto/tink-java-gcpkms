@@ -21,9 +21,11 @@ import com.google.cloud.kms.v1.GetPublicKeyRequest;
 import com.google.cloud.kms.v1.KeyManagementServiceClient;
 import com.google.cloud.kms.v1.PublicKey;
 import com.google.common.hash.Hashing;
+import com.google.common.io.BaseEncoding;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Int64Value;
 import java.security.GeneralSecurityException;
+import java.util.Base64;
 import java.util.regex.Pattern;
 
 /** Helper functions shared by the Google Cloud KMS integration, for internal use only. */
@@ -73,6 +75,22 @@ public final class GcpKmsUtil {
         .setCrc32CChecksum(
             Int64Value.of(Hashing.crc32c().hashBytes(data.asReadOnlyByteBuffer()).padToLong()))
         .build();
+  }
+
+  /**
+   * Wraps raw ML-DSA public key bytes in a PEM-encoded SubjectPublicKeyInfo, exactly as Cloud KMS
+   * GetPublicKey returns for ML-DSA keys.
+   */
+  public static ByteString mlDsaPublicKeyPem(String preambleHex, ByteString rawKey) {
+    ByteString spki =
+        ByteString.copyFrom(BaseEncoding.base16().lowerCase().decode(preambleHex)).concat(rawKey);
+    String base64 = Base64.getEncoder().encodeToString(spki.toByteArray());
+    StringBuilder pem = new StringBuilder("-----BEGIN PUBLIC KEY-----\n");
+    for (int i = 0; i < base64.length(); i += 64) {
+      pem.append(base64, i, Math.min(i + 64, base64.length())).append('\n');
+    }
+    pem.append("-----END PUBLIC KEY-----\n");
+    return ByteString.copyFromUtf8(pem.toString());
   }
 
   /**

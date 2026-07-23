@@ -135,6 +135,7 @@ java_test(
     deps = [
         "@tink_java//src/main/java/com/google/crypto/tink:public_key_verify",
         "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_public_key_verify",
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms/internal:gcp_kms_util",
         "@maven//:com_google_api_gax",
         "@maven//:com_google_api_gax_grpc",
         "@maven//:com_google_api_grpc_grpc_google_cloud_kms_v1",
@@ -148,6 +149,7 @@ java_test(
         "@maven//:io_grpc_grpc_stub",
         "@maven//:io_grpc_grpc_testing",
         "@maven//:junit_junit",
+        "@maven//:org_conscrypt_conscrypt_openjdk_uber",
     ],
 )
 

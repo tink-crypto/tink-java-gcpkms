@@ -18,6 +18,7 @@ package com.google.crypto.tink.integration.gcpkms;
 
 import static com.google.common.truth.Truth.assertThat;
 import static com.google.crypto.tink.integration.gcpkms.internal.GcpKmsUtil.checksummedData;
+import static com.google.crypto.tink.integration.gcpkms.internal.GcpKmsUtil.mlDsaPublicKeyPem;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertThrows;
 
@@ -54,7 +55,6 @@ import io.grpc.testing.GrpcCleanupRule;
 import java.lang.reflect.Method;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
-import java.util.Base64;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -328,24 +328,27 @@ public final class GcpKmsPublicKeySignTest {
               .setProtectionLevel(ProtectionLevel.SOFTWARE)
               .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_44)
               .setPublicKey(
-                  mlDsaPublicKeyPem(
-                      ML_DSA_44_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_44_PUBLIC_KEY_SIZE)));
+                  checksummedData(
+                      mlDsaPublicKeyPem(
+                          ML_DSA_44_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_44_PUBLIC_KEY_SIZE))));
           break;
         case KEY_NAME_FOR_ML_DSA_65:
           builder
               .setProtectionLevel(ProtectionLevel.SOFTWARE)
               .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_65)
               .setPublicKey(
-                  mlDsaPublicKeyPem(
-                      ML_DSA_65_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_65_PUBLIC_KEY_SIZE)));
+                  checksummedData(
+                      mlDsaPublicKeyPem(
+                          ML_DSA_65_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_65_PUBLIC_KEY_SIZE))));
           break;
         case KEY_NAME_FOR_ML_DSA_87:
           builder
               .setProtectionLevel(ProtectionLevel.SOFTWARE)
               .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_87)
               .setPublicKey(
-                  mlDsaPublicKeyPem(
-                      ML_DSA_87_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_87_PUBLIC_KEY_SIZE)));
+                  checksummedData(
+                      mlDsaPublicKeyPem(
+                          ML_DSA_87_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_87_PUBLIC_KEY_SIZE))));
           break;
         case KEY_NAME_FOR_ML_DSA_INVALID_PEM:
           builder
@@ -375,8 +378,9 @@ public final class GcpKmsPublicKeySignTest {
               .setAlgorithm(
                   CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_44_EXTERNAL_MU)
               .setPublicKey(
-                  mlDsaPublicKeyPem(
-                      ML_DSA_44_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_44_PUBLIC_KEY_SIZE)));
+                  checksummedData(
+                      mlDsaPublicKeyPem(
+                          ML_DSA_44_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_44_PUBLIC_KEY_SIZE))));
           break;
         case KEY_NAME_FOR_ML_DSA_65_EXTERNAL_MU:
           builder
@@ -384,8 +388,9 @@ public final class GcpKmsPublicKeySignTest {
               .setAlgorithm(
                   CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_65_EXTERNAL_MU)
               .setPublicKey(
-                  mlDsaPublicKeyPem(
-                      ML_DSA_65_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_65_PUBLIC_KEY_SIZE)));
+                  checksummedData(
+                      mlDsaPublicKeyPem(
+                          ML_DSA_65_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_65_PUBLIC_KEY_SIZE))));
           break;
         case KEY_NAME_FOR_ML_DSA_87_EXTERNAL_MU:
           builder
@@ -393,8 +398,9 @@ public final class GcpKmsPublicKeySignTest {
               .setAlgorithm(
                   CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_87_EXTERNAL_MU)
               .setPublicKey(
-                  mlDsaPublicKeyPem(
-                      ML_DSA_87_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_87_PUBLIC_KEY_SIZE)));
+                  checksummedData(
+                      mlDsaPublicKeyPem(
+                          ML_DSA_87_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_87_PUBLIC_KEY_SIZE))));
           break;
         case KEY_NAME_FOR_ML_DSA_EXTERNAL_MU_INVALID_KEY:
           builder
@@ -402,8 +408,10 @@ public final class GcpKmsPublicKeySignTest {
               .setAlgorithm(
                   CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_65_EXTERNAL_MU)
               .setPublicKey(
-                  mlDsaPublicKeyPem(
-                      ML_DSA_65_SPKI_PREAMBLE, mlDsaTestPublicKey(ML_DSA_65_PUBLIC_KEY_SIZE - 1)));
+                  checksummedData(
+                      mlDsaPublicKeyPem(
+                          ML_DSA_65_SPKI_PREAMBLE,
+                          mlDsaTestPublicKey(ML_DSA_65_PUBLIC_KEY_SIZE - 1))));
           break;
         case KEY_NAME_FOR_PUBLIC_KEY_CHECKSUM_MISMATCH:
           builder
@@ -421,20 +429,6 @@ public final class GcpKmsPublicKeySignTest {
       responseObserver.onNext(builder.build());
       responseObserver.onCompleted();
     }
-  }
-
-  // Wraps raw ML-DSA public key bytes in a PEM-encoded SubjectPublicKeyInfo, exactly as Cloud KMS
-  // GetPublicKey returns for ML-DSA keys; the signer parses this PEM to recover the raw bytes.
-  private static ChecksummedData mlDsaPublicKeyPem(String preambleHex, ByteString rawKey) {
-    ByteString spki =
-        ByteString.copyFrom(BaseEncoding.base16().lowerCase().decode(preambleHex)).concat(rawKey);
-    String base64 = Base64.getEncoder().encodeToString(spki.toByteArray());
-    StringBuilder pem = new StringBuilder("-----BEGIN PUBLIC KEY-----\n");
-    for (int i = 0; i < base64.length(); i += 64) {
-      pem.append(base64, i, Math.min(i + 64, base64.length())).append('\n');
-    }
-    pem.append("-----END PUBLIC KEY-----\n");
-    return checksummedData(ByteString.copyFromUtf8(pem.toString()));
   }
 
   // Returns deterministic bytes of the given size to stand in for the raw ML-DSA public key. Tink

@@ -326,4 +326,75 @@ public final class GcpKmsUtilTest {
             () -> GcpKmsUtil.fetchPublicKey(kmsClient, VALID_KEY_NAME));
     assertThat(e).hasMessageThat().contains("The GetPublicKey checksum does not match");
   }
+
+  // --- mlDsaPublicKeyPem ---
+
+  @Test
+  public void mlDsaPublicKeyPem_shortKey_producesSingleLinePem() {
+    String preambleHex = "00112233";
+    ByteString rawKey = ByteString.copyFrom(new byte[] {0x44, 0x55, 0x66});
+    ByteString expected =
+        ByteString.copyFromUtf8(
+            "-----BEGIN PUBLIC KEY-----\n" + "ABEiM0RVZg==\n" + "-----END PUBLIC KEY-----\n");
+    assertThat(GcpKmsUtil.mlDsaPublicKeyPem(preambleHex, rawKey)).isEqualTo(expected);
+  }
+
+  @Test
+  public void mlDsaPublicKeyPem_exact64CharLine_producesOneLine() {
+    // 10 preamble bytes + 38 key bytes = 48 bytes, which produce exactly 64 base64 characters.
+    byte[] preambleBytes = new byte[10];
+    StringBuilder preambleHexBuilder = new StringBuilder();
+    for (int i = 0; i < 10; i++) {
+      preambleBytes[i] = (byte) i;
+      preambleHexBuilder.append(String.format("%02x", i));
+    }
+    String preambleHex = preambleHexBuilder.toString();
+
+    byte[] rawKeyBytes = new byte[38];
+    for (int i = 0; i < 38; i++) {
+      rawKeyBytes[i] = (byte) (i + 10);
+    }
+    ByteString rawKey = ByteString.copyFrom(rawKeyBytes);
+
+    byte[] combined = ByteString.copyFrom(preambleBytes).concat(rawKey).toByteArray();
+    String base64 = java.util.Base64.getEncoder().encodeToString(combined);
+    assertThat(base64.length()).isEqualTo(64);
+    ByteString expected =
+        ByteString.copyFromUtf8(
+            "-----BEGIN PUBLIC KEY-----\n" + base64 + "\n" + "-----END PUBLIC KEY-----\n");
+    assertThat(GcpKmsUtil.mlDsaPublicKeyPem(preambleHex, rawKey)).isEqualTo(expected);
+  }
+
+  @Test
+  public void mlDsaPublicKeyPem_longKey_wrapsAt64Characters() {
+    // 10 preamble bytes + 90 key bytes = 100 bytes, which produce 136 base64 characters.
+    byte[] preambleBytes = new byte[10];
+    StringBuilder preambleHexBuilder = new StringBuilder();
+    for (int i = 0; i < 10; i++) {
+      preambleBytes[i] = (byte) i;
+      preambleHexBuilder.append(String.format("%02x", i));
+    }
+    String preambleHex = preambleHexBuilder.toString();
+
+    byte[] rawKeyBytes = new byte[90];
+    for (int i = 0; i < 90; i++) {
+      rawKeyBytes[i] = (byte) (i + 10);
+    }
+    ByteString rawKey = ByteString.copyFrom(rawKeyBytes);
+
+    byte[] combined = ByteString.copyFrom(preambleBytes).concat(rawKey).toByteArray();
+    String base64 = java.util.Base64.getEncoder().encodeToString(combined);
+    assertThat(base64.length()).isEqualTo(136);
+    ByteString expected =
+        ByteString.copyFromUtf8(
+            "-----BEGIN PUBLIC KEY-----\n"
+                + base64.substring(0, 64)
+                + "\n"
+                + base64.substring(64, 128)
+                + "\n"
+                + base64.substring(128)
+                + "\n"
+                + "-----END PUBLIC KEY-----\n");
+    assertThat(GcpKmsUtil.mlDsaPublicKeyPem(preambleHex, rawKey)).isEqualTo(expected);
+  }
 }

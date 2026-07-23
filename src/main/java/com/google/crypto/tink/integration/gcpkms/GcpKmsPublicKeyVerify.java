@@ -38,6 +38,10 @@ import javax.annotation.Nullable;
  *
  * <p>The verifier is built upon the public key that's fetched from Cloud KMS once, and is used to
  * verify signatures locally. Cloud KMS is not contacted again.
+ *
+ * <p>Verifying post-quantum signatures (ML-DSA) requires a Conscrypt provider that supports ML-DSA
+ * to be installed, e.g. by calling {@code Security.addProvider(Conscrypt.newProvider())}. Without
+ * it, {@link Builder#build} fails for ML-DSA keys.
  */
 public final class GcpKmsPublicKeyVerify implements PublicKeyVerify {
 
@@ -80,6 +84,12 @@ public final class GcpKmsPublicKeyVerify implements PublicKeyVerify {
         return PemKeyType.RSA_PSS_4096_SHA256;
       case RSA_SIGN_PSS_4096_SHA512:
         return PemKeyType.RSA_PSS_4096_SHA512;
+      case PQ_SIGN_ML_DSA_44:
+        return PemKeyType.ML_DSA_44;
+      case PQ_SIGN_ML_DSA_65:
+        return PemKeyType.ML_DSA_65;
+      case PQ_SIGN_ML_DSA_87:
+        return PemKeyType.ML_DSA_87;
       default:
         throw new GeneralSecurityException("The algorithm " + algorithm + " is not supported.");
     }
@@ -108,7 +118,6 @@ public final class GcpKmsPublicKeyVerify implements PublicKeyVerify {
 
     public PublicKeyVerify build() throws GeneralSecurityException {
       GcpKmsUtil.validateKeyName(keyName);
-
       if (kmsClient == null) {
         throw new GeneralSecurityException("The KeyManagementServiceClient object is null.");
       }
@@ -119,11 +128,11 @@ public final class GcpKmsPublicKeyVerify implements PublicKeyVerify {
       RsaSsaPssProtoSerialization.register();
 
       PublicKey publicKey = GcpKmsUtil.fetchPublicKey(kmsClient, keyName);
-      PemKeyType pemKeyType = pemKeyType(publicKey.getAlgorithm());
-
+      CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm = publicKey.getAlgorithm();
+      // Build a local Tink verifier from the public key.
       KeysetHandle keysetHandle =
           SignaturePemKeysetReader.newBuilder()
-              .addPem(publicKey.getPublicKey().getData().toStringUtf8(), pemKeyType)
+              .addPem(publicKey.getPublicKey().getData().toStringUtf8(), pemKeyType(algorithm))
               .buildPublicKeysetHandle();
       return new GcpKmsPublicKeyVerify(
           keysetHandle.getPrimitive(SignatureConfig2026.get(), PublicKeyVerify.class));

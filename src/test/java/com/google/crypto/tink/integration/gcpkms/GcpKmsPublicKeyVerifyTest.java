@@ -17,6 +17,7 @@
 package com.google.crypto.tink.integration.gcpkms;
 
 import static com.google.common.truth.Truth.assertThat;
+import static com.google.crypto.tink.integration.gcpkms.internal.GcpKmsUtil.mlDsaPublicKeyPem;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.junit.Assert.assertThrows;
 
@@ -42,7 +43,12 @@ import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.stub.StreamObserver;
 import io.grpc.testing.GrpcCleanupRule;
 import java.security.GeneralSecurityException;
+import java.security.Provider;
+import java.security.Security;
+import java.security.Signature;
 import java.util.Base64;
+import org.conscrypt.Conscrypt;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -84,6 +90,12 @@ public final class GcpKmsPublicKeyVerifyTest {
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/13";
   private static final String KEY_NAME_RSA_PSS_3072_SHA256 =
       "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/14";
+  private static final String KEY_NAME_ML_DSA_44 =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/15";
+  private static final String KEY_NAME_ML_DSA_65 =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/16";
+  private static final String KEY_NAME_ML_DSA_87 =
+      "projects/cloudkms-test/locations/global/keyRings/KR/cryptoKeys/K1/cryptoKeyVersions/17";
 
   private static final byte[] signData = "data".getBytes(UTF_8);
 
@@ -258,6 +270,321 @@ public final class GcpKmsPublicKeyVerifyTest {
           + "Q1sM0efzF/Br3aylzgzd+a5KvMq/0WGoVmHgvrH41lVxIlL2K1MHopfWz1Qi9sFVyB3MmIXIpcSL"
           + "GGYPgxL+zvqtZL+01ury1ASUw28414i4LU7OUO3C1oQc/tR4eETXYZ++qSsS6XmT7Br8k7h1VpQ=";
 
+  // Generated the private key with Cloud KMS and exported public key.
+  private static final String ML_DSA_44_PUBLIC_KEY =
+      "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"
+          + "+A==";
+
+  // Generated with Cloud KMS through AsymmetricSign.
+  private static final String ML_DSA_44_SIGNATURE =
+      "mhEUueBei2QaoPZxC6v0Vg3tpgz0xVQ8RGAKbambZYn8TjdEFHSp2iPS3yNpYQf9t6oVYdcmTmoz"
+          + "53uvg41ABjOIMU4SkW1EYSPGF9FCrk4RtOS2DR86t3wKPEGyll9bMQ48B7tZi2ehFqOxmIhxm1RY"
+          + "ipZYxo94CBh7S2JLR8WVrQATqHIo01CT2EIaGOmpRMHNfVe36FF0agm4w9hTyneGgDqsepytCPav"
+          + "JmeoTaviTbzxt8Rkrq/JgcqxhJf7k9PFpPNSvWmSGlvB17ZuU2KQO8urEFuL1tuvlUSYymNBY3eK"
+          + "uCRns9DZ08jAwdWimz+WwJF94IeByLc29v1t3ndz5ReF50flmPDaWFSQZaXVvMEtTxuTQ1rQ7l6D"
+          + "3ck0AedpnU5Mx6lqxBE9C/Vly89rm+I6xTPsK3Emc1xTZAu28wiWYihANtCgfu0TNlO0atZFX1em"
+          + "Xtt/oL3IYz//JprdfMNFXAMR3SaaFyxcDKPhh/1FJo1zI9QDgzcCRjX+3YHunnEjDup6i7Asyjfn"
+          + "tWAGKhAGyGaSGDSsNfAVsryt1zyOKuK49o9oj17nkV3M861FPVq3OyRJQc4N1r8eSw1GpTGZ7Moq"
+          + "axcFoAZzjri20SuntedNZ8fWaqulMkSl6q6lcfGKmSOdFiSd1EpFnWXZaWO6tPBwAsfNCmKnofpt"
+          + "9xOb6ULufFk+/d/QI1D1l4A6TXoHpvAg/cyCPS5vKWj0J0GomESffz6dKsWR4TA2uOBf3yq0ia0q"
+          + "a6BysKcvUufLk6I2Es4EdueQRpNA9TVYPBN/VwaHOe6ePSrBH+p+UFI9Gsm1RhfqImo6MzzwBpL7"
+          + "+GvwN8yo7E3xdDptUi5D4vSBStTbt0el2VrkOM2zvuZNqjWXz3a44HmwMTpJwJz0aISbiJBylFps"
+          + "oSyNmAVLzOhezg30sQjEzWzddrrb6aWu1G31hkqvS6Hq2ZX/bKrLQIJRsb4iOVIoCDdYyPwfihxS"
+          + "gWHCE4JdJPEdC2W5S6CXsu4AqAGonHHZJXyzLTiXtx5OKN0SsgfajkTSThQouLsWx33da7/BulSv"
+          + "8joqJCcjMzYMKITepbcXapnMuxQeMYrT4cd5J9OrtCySP23BhwisujCzZfJG8jRRSPfQatZzRrV5"
+          + "he0Gi4jkxDGBe3HcRGmHF5U84MgxUwGuwUv8D76ZPe3AOUHjVjRrX8MmN8nWagoL405R+Ih3TfVU"
+          + "1PbKvgmuCEzip5Jj8emSA6NnQ9K9ZiCyFMnjLwLmm47ZBRdaN0RWd+2Df/Mw9ZJhm1QCh7kB9acn"
+          + "3jgjacnQHsVuKxRZuXAos8zNXkIewqF1mqz7zxlEZxnwSq8Gn0oSsLq9echhWYwy2l4tewykUaNm"
+          + "DkyL5ehXVAim7G1M0gI1WqmiE2GJMed0TL43o0FlMnxKMXV7pFOWBe96QK2IhLf9JrfyvR+dsYgp"
+          + "y+c8pYz4zFyLTOBSuEqlv6UPPpF0QFmrSv3vCnmM1DIuHGHZ+DqbrkoEKDxPWbIz4hVaA0Skde6U"
+          + "mm1t1cvRHw1FjkS5B9egiBchDCo+p6ewBawZAWrxrN/Rw3KSqqSWdR1oq53kN92w0Q99hb6oc94P"
+          + "/1ciif0CrR5Go7VGuGOisW2maCIAglhLWdaABAIGgrrQIuytFKzuHFklQWLzMC07NBmKGOVvkarB"
+          + "aMvm7zXQtJChQ8kaM01xVo6bmaeoLCVSsjHVooYO97xz8MuO7faElIJOBU2+WoNdWNjMCF15Dhdo"
+          + "T4lwVajz38Svlv+klS+rzdxlcp0y4/dHgnOsJSonWDzgE5XzIVQbkLe9wL5rrleZJuB//GZoAuL2"
+          + "jJEsX4kGZyUIZ844tLML62yHv94wneFvPDNezAUus9UkUyQXeAA7oz6Qd1g9up+pzAEwK9pExhv/"
+          + "w6irzEkn8VvXHDxKK/WTvz3up3lZeKsnaolUFbPwP5vLfmVA6EAA8qH1+rBXgoj8y0meL8eJ+lTe"
+          + "oDbLbFKDZU1UKLWISuckEnq9BXFuDofnbh+17XeJP2WCF1kCRnTV41lCXnlJopJxRcW0snwoXRPR"
+          + "sIRsLvZ5N+9AehWSohGwGU80Nop+5+Ke0CqQWHypHu5NNdfFEAZWVrEPoyJAF+MienXYKEeJpdm1"
+          + "7t1Fbx5sMpNd452kQpmJM/89T/0Q2St+Sj5/GfDT0jKfIcWtvmG9bmJnQYJ8QFBvFf1mBaAgG/N8"
+          + "OH4QG4Ji4BXC2fADKp6l0v3tYm0jvebzZXO/yERBULl4YxZYh0ZjuJPsblzZFYc9gQny/cFukYYn"
+          + "SalfUciKyEIuHfq5TYJCWoe83QcZ9Q4uhYxBmIk3hNWa8Kt4/Fk6Hz/PXfX/xLUpH5+V5nUycQl2"
+          + "CqVVjUvnYLgqfFhKwF9QrVJH0QmQwZM3UWtQ/NcYBHbsw7dO+ufq0MnonQAYVdoWu6pNxzwocb6C"
+          + "CZGA1whfg/Ky8cAXfEPJYYAb7NOtnnO7oWzhJnyXqjfWjTa9DmI7DU6g2dpOXw88Y/yb0KZwCF32"
+          + "d0ZoOg11cPbW7Prc69X1hGq7AYa4MAIC1iXFUaGJPcpR8wSCk6IPLmwV7HumiFxg7TjNeQZ+Y2bl"
+          + "oT8OdHChzaIPAkHJY50Pt82OnLXs3EKZuNuCqUpIJJSnErWZGt4GXG6tEjzmc5Bzp6SpzWSLI0zF"
+          + "uhGJNNQp90ctrSzAwx4zYUOoDWbMCweO3N8htEZq9YzIo/cV9cy4YJ/XFzDVPJcCctKOJhSB3dvm"
+          + "jOTnkLgheyxZuK7YCssLVNrsePsGK80iRDt3szhYypeCUYJuAm6DOUnDS/Eo/5GpX3hlG5i+8QJg"
+          + "iOlwp/fsVj+yewH0zUXSJwcqQ5s01rNtXmqj52lrhC5ktOUZSw6gQFKyeqjSNY1jQogJHrKv+Apn"
+          + "i4R5IYOOp+pCqKvR+nxA7fzch6TGZecdS9jU7cDxCkSRzl5pp6ejngX8rAOUeoqE2QHhVbqG2aqD"
+          + "wvUKBPPbj9rZfIjEvLEL7BJiq3JOVPod3hHFIzvwrY/K38qVISWP3i4/Max7c9eYQJqYl3Lhixth"
+          + "hgweh86TfvDqcaZIfRHeKOrSD1yKXhIdMwPIJNfAmhtmeDVr/A/wXgLZqTiNWInVz0dPMpYzwm0E"
+          + "BxAnKDNRVFV+l8XoO6uy0NXuAxEZGiYvMGtveImw9v0PLTZAeHmRm5+hxePl8gAAAAAAAAAAAAAA"
+          + "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA0TIS8=";
+
+  // Generated the private key with Cloud KMS and exported public key.
+  private static final String ML_DSA_65_PUBLIC_KEY =
+      "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"
+          + "P6hfdtqZug4zT5/nX2w=";
+
+  // Generated with Cloud KMS through AsymmetricSign.
+  private static final String ML_DSA_65_SIGNATURE =
+      "qgPJrxId74UztifeXPAVA16O/Yrt1KeyKDaHGYqqqlgr+Zeo80UAlnaurAWRsZSfC+NjQ6NCQvrS"
+          + "JQqjwCa59Bu5Z47FhBu4kfF8uS8mBxcX+hhGrPDt/KT4J7D0KtaBWBw0e1N+l5rAQ9bEBw62thQ+"
+          + "WfGqHOsr4oP2nSFL6JxhrolUogLd/vOzrJOO8pKdpeQ14LoGJFUVXhTHfdXycyEpdHWbnxhU79FD"
+          + "WKJ9tWs/ZN1Bzbd69TikWMwv+lWkShJ54P/mDdhqJVauRdY6DIUkc9Tha030B05YM4MVzzQPcPc/"
+          + "PogsJvQfW+qG7jWPkgAPFcr51TRwmV8qAubLgxCqJ2xdPXkXjjbEj8S5kjBt1Y04j8ddtc10Q4R4"
+          + "Zc6q5p2cfpoSniDTCDKvcSrKeIVyXtzuozUOwjQ9WQj8M0UIB4b5pyE03Wkc8Cch1M3/OrqBQrIW"
+          + "dy1wGnlwZ8knRfvJIap+tj2CgB391+kGSeZzNmCM9q7bjht5ByMPqk03w/8IjApIkluXyEJavIUd"
+          + "x1oSM5ZlK15vjRpCpRKJSwbRntm/dxDQFYGxPbTUtYVt9057psdiVaKZlUixabxwaK0np5ckbQ2L"
+          + "7jzyiAkYYinc+g9r1DjWI5VYarEbmX6eR02w8hIIGCD6duWIZqgM6EbPHkgGBZKnLp8E0xRR7ISx"
+          + "8sXxOKtOcxiS7/tPagrRQa95MI3IPE9E54gjU/jHLcyBVZyQht25+jYbCS/bgwFi2NHf4+ZfBMom"
+          + "CO8vN3wXZfNSflBTlbpOXA61WC+GMABrEk1sggvTOsJca8RA3D0McrCbpCwpTRKyPRf9aLTA7obp"
+          + "/M6WHTWAJRIv2voFzqFUPtnaQX07FrAjwZz7SmqcmV2DRSI5x3SAQ5hicIa3A5d6Zk6m48R7Xvtq"
+          + "ejcIoESw9mMwBSL1pOTazxBU9cJXfWnuIsw/mRgXoRylaqsBCnLR0tdli/R35PfYlQ3Q49P+gHr7"
+          + "bhPu4BBmKPjWNL1r2l74duW+2hFTSwC0mpyjnkCfk5RilQXYNySC//MvxULDRt+DF+1TEK8yiP83"
+          + "XTdfkhmu/hOwC9/652H+jL83N7j6feXU4hB1qOJYC3TlO6xKmHInh1CP/oWKjBTgo4qjUrPmDRKR"
+          + "BPDY3FiMYbD6NAAm9SwyUp/MH7sUCZlP7bDu84IAhxyl0kTRKvUOpbyrtZCmom/juUtv/8LVlVdT"
+          + "Jx8ggghrRqU+Y17WQM6EAPiybfRmj4QeKPYB4hMSt6c7xbbPbqLtaHGYENCWj8yv2IlO7ybwUb1H"
+          + "a+/mPK9CmVtcKl1HJOoYDGQ4eTMJnG24l8zincyaF6+9q8eh+EzFeJFZvnsmk7u1SHbXH9/CNNxe"
+          + "qQWr5OiVTbhdUrcI6PCgqp3DJQAa1IqKS+Zi4epl/9H5QEuZcXAc2LrXiuEDYAslZPg+bTb2T4xa"
+          + "ygy+3P8abhblVyUCJS1JhH1tnnevefg9XFBdzI7fp6rVlKyCht/zYoFf8ScX50SGGPv7E3IZGPvi"
+          + "14EyF5K2X4eS+w/NoCEL/j8SW+RZfC+Z9uqW71s7skid2r4pqxqqwWJMpEqTxkqtazVu15k7DLZV"
+          + "C+yvKU22yCvdbcY5b1E0Vr0hGZGZ8w1W/Reom7PMHzUvxf0rwMc8o9mLqTRivcX5SKjsevKP5HGq"
+          + "458RkDVx6ussfkIo9Vi5u5pa9nr/SWWKeHIaQOpU/9jX/Mm1f7rj8lbJZnj2pye48qNKgAtZsKE6"
+          + "Fph82ZtnFMOEwrDxpxDd2Z3h8Elov6wMEuyaFFHvJ/jnsQ5ZIF6QntNWujq4ZdeQhJIgoQNxhC6L"
+          + "UVOkNgTmelcWFyfOISfifhOs+n5R3iZ2VP5lEiZX1m9RDV1LEuxPEvIjM45O7EDLLhw4FDhl2Ebc"
+          + "wEU4xj5mpiDITtHAAaTO/lBJj6QVj7GvfAVewp6Z3OUiT4B4E4EZBb+hnlYf1bZU2VYEgzqxH5DZ"
+          + "k7JvjQxfKsj4320RpHxF4YkwxbKBabu8xgP3oQlY1kk5hS099AHbPoeIAl6fziSJlfRfwdSsZtE8"
+          + "PbgD2QopoTOI5HtRHEx3OhHjDH000gPd1USmO1jQPDkZEJ5xI9/6Kksnwbh3DMg4Ec8idNm/oZSV"
+          + "/ChJ0/FAQ/6YSjEDYkl6UvcIO2ItnspLtjyB/kqZUzZINUYPrdksYLWpOVLI6p74J8JrfzB968lQ"
+          + "IKeEK+GlitCwuMyFG+a0Mc7H+F7ITT1NzBN91qo8+Y0mY9sJ5bjgeKNJbYeSRy4c7ILgwrEnW0ek"
+          + "lS9Ek2bQZHSDw5kKgQ0HZjjxb5dFzqYmspUmvl5XHGrQpi9WflHo3Lh/Q/wlQdoR5ugJXYjj7UkV"
+          + "oE48tXvemBAXsj17B2D/nNJZ0nc6TJz6eh12LJ+yfirvUOE0AS7fVIiN5sgjebkSRmhkSYSPtY2Q"
+          + "LzVix2P6gY8KaNCpbMtYU+LoeSpvl48aR1gNnr4aod6OWcPsh2PHWRtTV6Ct39HdFSnidW+xMZnM"
+          + "bnXgKkMk0d3rERM2zxIIOkrlzvZWRg0W0zYJBQ1YyDuL4ERruiIdLzNI4KPeQ/rbFIhWeQt77Y08"
+          + "WwraHDTSdIbgpO9zQSieSJEnKJrca//E92cvBcDF36yT9SQ4WW1phIlTvibzIK77pZl96+6vdMuJ"
+          + "x20EAhqNSaS+D1oiZaOid66DgBBwMIycUknDdgKxNBRPcgqz1jVMSMmozGpu8yS2+HgsJsRmPca3"
+          + "57AH0+RXAuV6KAw9aI3EG1CwyjmDhOxOoinXL+w+8AXH4Zzv2sHM2/uZm9cFz6bwlD6IDsk+/xIQ"
+          + "Rf5tNGz3ii5IB42K8aiIXjhFUuF6thXqQWt7KpKd+lPRgb/1fvdKCHgd/jz8JKHHcmI8zPYpdYTP"
+          + "H5IAL7Kis/9JWs8VzWy2IM0KFONRLiOp3QUBfja4Gxo2kFF1QEoS3hWPI9Zko0UzDU5csh0XfLj4"
+          + "mIfJ9GEosbxLlnHYo8ABjvVEjy6OLpcwF2zdZ6BGcM4zPk/qQg6+yKkJDrkIelUKhJMYlbXUhGsZ"
+          + "9vaSVq0eULvCsU7lhrX0Wtqbv5fzw6A5YKqNcMuj6JE5jQTf+pYsy+/hd4P96YmoaAQjERUrCHSJ"
+          + "q5GSK55tq+Z5Gf0xPIjGRHPP2EWLlt7ioQ5ZTUD23IgmDo1xelcZtpVnPO2nH+HHePdShixJ1YTB"
+          + "PPnwPZW9nQNmHXC8D3U6brTvePjfP0GlhS75UIkn6+pQS1PpbVgXRelptq93T3HSOwf9MZRcPVP4"
+          + "vMKA+xTyr3LRc8SF4/E8i11RtZFFBz4two5LwUJzIoZrL4Qjy9oEf5+iAvFKuJjAaZPMKfntrzXy"
+          + "0xI0kinaEUp9RPuUvDXde/nMzTTp65US4H98b9ZxP1ThWZ5S/NPAdpdrTbiWOmj/hNmbl+SpalJc"
+          + "8Nol+e6uGrOdsoy2QXYN29q/px537giWQOas2UYneKUM0We959FO0RRpuo/BbAim4zppusV44K/L"
+          + "V6uB5dz3GuEl7bgz9aUZnMIjitFVLu0fOUzlcwCLtUgYdUWYR3WeP8AAROzCWECXrzg0uaKgRB5i"
+          + "bQoHgndHUUGB2GoHqLrxumzJIonZWURGSMmrTDHRo9bHv4ox0HNN5LZMm2jvrfRvM8fmpuslQkqf"
+          + "oyZ42OEAxDfQXg7Vum98ne70L3+cih6DDQsLd2ubYqifNaW09q63Qp+ZGDMlA5ZW/ux1Sy/KTwrv"
+          + "gPCauP3w8eJd7l9VOxC7z6FFouYWoIo+g5f3Z3xx8AeDQYkEt38ouxtgfpZcHMBf4/vkY6Dgo7gr"
+          + "OKG6gibe5mXRaZLRwPTlR5hsPDIf5EhagGdJ4lk63H9b5lxT3O05O/3TuuOMYgTgDeRj034dDqj7"
+          + "9FOaOXR+tdKZSYfuOuwNKDfYmuEAm8ID2OWMIorU2uyJVPirypj/J22/KjU+J3iWguL8RK45BiGj"
+          + "I04JeYZPwm4mUwwUxgsjOgJYYMTkC2tNWz1EIMTxGBnwCzKitHTgwIoVKHl9vbdS/ZBTkFmzYckb"
+          + "kbE8TnXb7vJiSGuV+3gf585HoKiajRKDsFfyPgwwT83FQIBcIAFo4Azass/A5jGQkpmpUp5fTqZs"
+          + "0pkYzoLDYHfDLCZjMjaj1F15CzrdbDTPrX+ySANXfZC7Efz0YnDYP++ivtLYz0Vo4IYXwUYI9FYX"
+          + "HKCYhg7dvx2T0UA/fe6QpgJTBHt3mgcYssTZI5f9NDeMJknQDASHtqcuBjnwptyZ0Lg8wrasS3HV"
+          + "Ljqg8xlv5ftOMZH+5urKx9Nj1GBpeSCj8j4Ynkhrg7mWTjo7VSDlNj29MmcEz4tCkmPEFdzxuC40"
+          + "VHaLuL/A5SMlar3IBBArBCNHi6m4w+r0Ol1h2N7n7wgNFiiEs7gAAAAAAAAAAAAAAAAAAAAACA0Q"
+          + "GSAn";
+
+  // Generated the private key with Cloud KMS and exported public key.
+  private static final String ML_DSA_87_PUBLIC_KEY =
+      "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"
+          + "TBjEccBnPjjoXQutOE77DbF+muWyajLvgjRX";
+
+  // Generated with Cloud KMS through AsymmetricSign.
+  private static final String ML_DSA_87_SIGNATURE =
+      "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"
+          + "AAALERgjKTE3PA==";
+
+  // DER SubjectPublicKeyInfo prefixes that precede the raw key bytes in an ML-DSA PEM (RFC 9881).
+  private static final String ML_DSA_44_SPKI_PREAMBLE =
+      "30820532300b06096086480165030403110382052100";
+  private static final String ML_DSA_65_SPKI_PREAMBLE =
+      "308207b2300b0609608648016503040312038207a100";
+  private static final String ML_DSA_87_SPKI_PREAMBLE =
+      "30820a32300b060960864801650304031303820a2100";
+
   /** This rule manages automatic graceful shutdown for the registered servers and channels. */
   @Rule public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
 
@@ -276,54 +603,75 @@ public final class GcpKmsPublicKeyVerifyTest {
         return;
       }
 
-      String pem;
+      ByteString data;
       CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm;
       switch (name) {
         case KEY_NAME_ECDSA_P384:
-          pem = ECDSA_P384_PUBLIC_KEY;
+          data = ByteString.copyFromUtf8(ECDSA_P384_PUBLIC_KEY);
           algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.EC_SIGN_P384_SHA384;
           break;
         case KEY_NAME_RSA_PKCS1_2048_SHA256:
-          pem = RSA_2048_PUBLIC_KEY;
+          data = ByteString.copyFromUtf8(RSA_2048_PUBLIC_KEY);
           algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_2048_SHA256;
           break;
         case KEY_NAME_RSA_PKCS1_3072_SHA256:
-          pem = RSA_3072_PUBLIC_KEY;
+          data = ByteString.copyFromUtf8(RSA_3072_PUBLIC_KEY);
           algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_3072_SHA256;
           break;
         case KEY_NAME_RSA_PKCS1_4096_SHA256:
-          pem = RSA_4096_PUBLIC_KEY;
+          data = ByteString.copyFromUtf8(RSA_4096_PUBLIC_KEY);
           algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_4096_SHA256;
           break;
         case KEY_NAME_RSA_PKCS1_4096_SHA512:
-          pem = RSA_4096_PUBLIC_KEY;
+          data = ByteString.copyFromUtf8(RSA_4096_PUBLIC_KEY);
           algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PKCS1_4096_SHA512;
           break;
         case KEY_NAME_RSA_PSS_2048_SHA256:
-          pem = RSA_2048_PUBLIC_KEY;
+          data = ByteString.copyFromUtf8(RSA_2048_PUBLIC_KEY);
           algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PSS_2048_SHA256;
           break;
         case KEY_NAME_RSA_PSS_3072_SHA256:
-          pem = RSA_3072_PUBLIC_KEY;
+          data = ByteString.copyFromUtf8(RSA_3072_PUBLIC_KEY);
           algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PSS_3072_SHA256;
           break;
         case KEY_NAME_RSA_PSS_4096_SHA256:
-          pem = RSA_4096_PUBLIC_KEY;
+          data = ByteString.copyFromUtf8(RSA_4096_PUBLIC_KEY);
           algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PSS_4096_SHA256;
           break;
         case KEY_NAME_RSA_PSS_4096_SHA512:
-          pem = RSA_4096_PUBLIC_KEY;
+          data = ByteString.copyFromUtf8(RSA_4096_PUBLIC_KEY);
           algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.RSA_SIGN_PSS_4096_SHA512;
+          break;
+        case KEY_NAME_ML_DSA_44:
+          data =
+              mlDsaPublicKeyPem(
+                  ML_DSA_44_SPKI_PREAMBLE,
+                  ByteString.copyFrom(Base64.getDecoder().decode(ML_DSA_44_PUBLIC_KEY)));
+          algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_44;
+          break;
+        case KEY_NAME_ML_DSA_65:
+          data =
+              mlDsaPublicKeyPem(
+                  ML_DSA_65_SPKI_PREAMBLE,
+                  ByteString.copyFrom(Base64.getDecoder().decode(ML_DSA_65_PUBLIC_KEY)));
+          algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_65;
+          break;
+        case KEY_NAME_ML_DSA_87:
+          data =
+              mlDsaPublicKeyPem(
+                  ML_DSA_87_SPKI_PREAMBLE,
+                  ByteString.copyFrom(Base64.getDecoder().decode(ML_DSA_87_PUBLIC_KEY)));
+          algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_87;
           break;
         case KEY_NAME_UNSUPPORTED_ALGORITHM:
           // The algorithm is rejected before the public key is parsed, so the PEM is never used.
-          pem = ECDSA_P256_PUBLIC_KEY;
+          data = ByteString.copyFromUtf8(ECDSA_P256_PUBLIC_KEY);
           algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.EC_SIGN_SECP256K1_SHA256;
           break;
         case KEY_NAME_ECDSA_P256:
         case KEY_NAME_PUBLIC_KEY_CHECKSUM_MISMATCH:
         case KEY_NAME_KEY_NAME_MISMATCH:
-          pem = ECDSA_P256_PUBLIC_KEY;
+          data = ByteString.copyFromUtf8(ECDSA_P256_PUBLIC_KEY);
           algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.EC_SIGN_P256_SHA256;
           break;
         default:
@@ -331,8 +679,7 @@ public final class GcpKmsPublicKeyVerifyTest {
           return;
       }
 
-      ByteString publicKey = ByteString.copyFromUtf8(pem);
-      long crc32c = Hashing.crc32c().hashBytes(publicKey.asReadOnlyByteBuffer()).padToLong();
+      long crc32c = Hashing.crc32c().hashBytes(data.asReadOnlyByteBuffer()).padToLong();
       if (name.equals(KEY_NAME_PUBLIC_KEY_CHECKSUM_MISMATCH)) {
         // Corrupt the checksum so it no longer matches the public key.
         crc32c += 1;
@@ -347,7 +694,7 @@ public final class GcpKmsPublicKeyVerifyTest {
               .setAlgorithm(algorithm)
               .setPublicKey(
                   ChecksummedData.newBuilder()
-                      .setData(publicKey)
+                      .setData(data)
                       .setCrc32CChecksum(Int64Value.of(crc32c)))
               .build();
       responseObserver.onNext(response);
@@ -357,6 +704,11 @@ public final class GcpKmsPublicKeyVerifyTest {
 
   @Before
   public void setUp() throws Exception {
+    // ML-DSA verification is delegated to Conscrypt, which must be installed as a JCA provider.
+    if (Conscrypt.isAvailable()) {
+      Security.addProvider(Conscrypt.newProvider());
+    }
+
     // Create a server, add service, start, and register for automatic graceful shutdown.
     String serverName = InProcessServerBuilder.generateName();
     grpcCleanup.register(
@@ -393,12 +745,26 @@ public final class GcpKmsPublicKeyVerifyTest {
     verifier.verify(signature, signData);
   }
 
-  /** A classical (non-PQC) signature algorithm together with its key name and test signature. */
-  private static final class ClassicalVerifyCase {
+  /** Returns whether the installed Conscrypt provider supports ML-DSA. */
+  private static boolean mlDsaSupported() {
+    Provider provider = Security.getProvider("Conscrypt");
+    if (provider == null) {
+      return false;
+    }
+    try {
+      Signature unused = Signature.getInstance("ML-DSA-65", provider);
+      return true;
+    } catch (GeneralSecurityException e) {
+      return false;
+    }
+  }
+
+  /** A signature algorithm together with its key name and test signature. */
+  private static final class VerifyCase {
     final String keyName;
     final String signature;
 
-    ClassicalVerifyCase(String keyName, String signature) {
+    VerifyCase(String keyName, String signature) {
       this.keyName = keyName;
       this.signature = signature;
     }
@@ -410,24 +776,64 @@ public final class GcpKmsPublicKeyVerifyTest {
   }
 
   @DataPoints("classicalVerifyCases")
-  public static final ClassicalVerifyCase[] classicalVerifyCases =
-      new ClassicalVerifyCase[] {
-        new ClassicalVerifyCase(KEY_NAME_ECDSA_P256, ECDSA_P256_SIGNATURE),
-        new ClassicalVerifyCase(KEY_NAME_ECDSA_P384, ECDSA_P384_SIGNATURE),
-        new ClassicalVerifyCase(KEY_NAME_RSA_PKCS1_2048_SHA256, RSA_PKCS1_2048_SHA256_SIGNATURE),
-        new ClassicalVerifyCase(KEY_NAME_RSA_PKCS1_3072_SHA256, RSA_PKCS1_3072_SHA256_SIGNATURE),
-        new ClassicalVerifyCase(KEY_NAME_RSA_PKCS1_4096_SHA256, RSA_PKCS1_4096_SHA256_SIGNATURE),
-        new ClassicalVerifyCase(KEY_NAME_RSA_PKCS1_4096_SHA512, RSA_PKCS1_4096_SHA512_SIGNATURE),
-        new ClassicalVerifyCase(KEY_NAME_RSA_PSS_2048_SHA256, RSA_PSS_2048_SHA256_SIGNATURE),
-        new ClassicalVerifyCase(KEY_NAME_RSA_PSS_3072_SHA256, RSA_PSS_3072_SHA256_SIGNATURE),
-        new ClassicalVerifyCase(KEY_NAME_RSA_PSS_4096_SHA256, RSA_PSS_4096_SHA256_SIGNATURE),
-        new ClassicalVerifyCase(KEY_NAME_RSA_PSS_4096_SHA512, RSA_PSS_4096_SHA512_SIGNATURE),
+  public static final VerifyCase[] classicalVerifyCases =
+      new VerifyCase[] {
+        new VerifyCase(KEY_NAME_ECDSA_P256, ECDSA_P256_SIGNATURE),
+        new VerifyCase(KEY_NAME_ECDSA_P384, ECDSA_P384_SIGNATURE),
+        new VerifyCase(KEY_NAME_RSA_PKCS1_2048_SHA256, RSA_PKCS1_2048_SHA256_SIGNATURE),
+        new VerifyCase(KEY_NAME_RSA_PKCS1_3072_SHA256, RSA_PKCS1_3072_SHA256_SIGNATURE),
+        new VerifyCase(KEY_NAME_RSA_PKCS1_4096_SHA256, RSA_PKCS1_4096_SHA256_SIGNATURE),
+        new VerifyCase(KEY_NAME_RSA_PKCS1_4096_SHA512, RSA_PKCS1_4096_SHA512_SIGNATURE),
+        new VerifyCase(KEY_NAME_RSA_PSS_2048_SHA256, RSA_PSS_2048_SHA256_SIGNATURE),
+        new VerifyCase(KEY_NAME_RSA_PSS_3072_SHA256, RSA_PSS_3072_SHA256_SIGNATURE),
+        new VerifyCase(KEY_NAME_RSA_PSS_4096_SHA256, RSA_PSS_4096_SHA256_SIGNATURE),
+        new VerifyCase(KEY_NAME_RSA_PSS_4096_SHA512, RSA_PSS_4096_SHA512_SIGNATURE),
       };
 
   @Theory
   public void verifyWorksForClassicalAlgorithm(
-      @FromDataPoints("classicalVerifyCases") ClassicalVerifyCase verifyCase) throws Exception {
+      @FromDataPoints("classicalVerifyCases") VerifyCase verifyCase) throws Exception {
     assertVerifies(verifyCase.keyName, verifyCase.signature);
+  }
+
+  @DataPoints("mlDsaVerifyCases")
+  public static final VerifyCase[] mlDsaVerifyCases =
+      new VerifyCase[] {
+        new VerifyCase(KEY_NAME_ML_DSA_44, ML_DSA_44_SIGNATURE),
+        new VerifyCase(KEY_NAME_ML_DSA_65, ML_DSA_65_SIGNATURE),
+        new VerifyCase(KEY_NAME_ML_DSA_87, ML_DSA_87_SIGNATURE),
+      };
+
+  @Theory
+  public void verifyWorksForMlDsa(@FromDataPoints("mlDsaVerifyCases") VerifyCase verifyCase)
+      throws Exception {
+    if (!mlDsaSupported()) {
+      return;
+    }
+    assertVerifies(verifyCase.keyName, verifyCase.signature);
+  }
+
+  @Test
+  public void verifyFailsForInvalidMlDsaSignature() throws Exception {
+    Assume.assumeTrue(mlDsaSupported());
+    PublicKeyVerify verifier = newVerifier(KEY_NAME_ML_DSA_65);
+    byte[] signature = Base64.getDecoder().decode(ML_DSA_65_SIGNATURE);
+    signature[0] ^= 0x01;
+    assertThrows(GeneralSecurityException.class, () -> verifier.verify(signature, signData));
+  }
+
+  @Test
+  public void verifyFailsForDifferentMlDsaAlgorithm() throws Exception {
+    Assume.assumeTrue(mlDsaSupported());
+    PublicKeyVerify verifier65 = newVerifier(KEY_NAME_ML_DSA_65);
+    byte[] signature44 = Base64.getDecoder().decode(ML_DSA_44_SIGNATURE);
+    byte[] signature87 = Base64.getDecoder().decode(ML_DSA_87_SIGNATURE);
+    assertThrows(GeneralSecurityException.class, () -> verifier65.verify(signature44, signData));
+    assertThrows(GeneralSecurityException.class, () -> verifier65.verify(signature87, signData));
+
+    PublicKeyVerify verifier87 = newVerifier(KEY_NAME_ML_DSA_87);
+    byte[] signature65 = Base64.getDecoder().decode(ML_DSA_65_SIGNATURE);
+    assertThrows(GeneralSecurityException.class, () -> verifier87.verify(signature65, signData));
   }
 
   @Test
@@ -471,23 +877,38 @@ public final class GcpKmsPublicKeyVerifyTest {
 
   @Test
   public void buildFailsWhenGetPublicKeyThrows() throws Exception {
-    assertThrows(
-        GeneralSecurityException.class, () -> newVerifier(KEY_NAME_GET_PUBLIC_KEY_EXCEPTION));
+    GeneralSecurityException e =
+        assertThrows(
+            GeneralSecurityException.class, () -> newVerifier(KEY_NAME_GET_PUBLIC_KEY_EXCEPTION));
+    assertThat(e).hasMessageThat().contains("The KMS GetPublicKey failed");
   }
 
   @Test
   public void buildFailsForPublicKeyChecksumMismatch() throws Exception {
-    assertThrows(
-        GeneralSecurityException.class, () -> newVerifier(KEY_NAME_PUBLIC_KEY_CHECKSUM_MISMATCH));
+    GeneralSecurityException e =
+        assertThrows(
+            GeneralSecurityException.class,
+            () -> newVerifier(KEY_NAME_PUBLIC_KEY_CHECKSUM_MISMATCH));
+    assertThat(e).hasMessageThat().contains("The GetPublicKey checksum does not match");
   }
 
   @Test
   public void buildFailsForKeyNameMismatch() throws Exception {
-    assertThrows(GeneralSecurityException.class, () -> newVerifier(KEY_NAME_KEY_NAME_MISMATCH));
+    GeneralSecurityException e =
+        assertThrows(GeneralSecurityException.class, () -> newVerifier(KEY_NAME_KEY_NAME_MISMATCH));
+    assertThat(e).hasMessageThat().contains("The key name in the response does not match");
   }
 
   @Test
   public void buildFailsForUnsupportedAlgorithm() throws Exception {
-    assertThrows(GeneralSecurityException.class, () -> newVerifier(KEY_NAME_UNSUPPORTED_ALGORITHM));
+    GeneralSecurityException e =
+        assertThrows(
+            GeneralSecurityException.class, () -> newVerifier(KEY_NAME_UNSUPPORTED_ALGORITHM));
+    assertThat(e).hasMessageThat().contains("is not supported");
+  }
+
+  @Test
+  public void buildFailsWhenNothingIsSet() throws Exception {
+    assertThrows(GeneralSecurityException.class, () -> GcpKmsPublicKeyVerify.builder().build());
   }
 }
