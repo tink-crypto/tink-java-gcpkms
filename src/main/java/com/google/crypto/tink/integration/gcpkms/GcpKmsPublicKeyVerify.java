@@ -19,16 +19,23 @@ package com.google.crypto.tink.integration.gcpkms;
 import com.google.cloud.kms.v1.CryptoKeyVersion;
 import com.google.cloud.kms.v1.KeyManagementServiceClient;
 import com.google.cloud.kms.v1.PublicKey;
+import com.google.crypto.tink.AccessesPartialKey;
+import com.google.crypto.tink.Key;
 import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.PemKeyType;
 import com.google.crypto.tink.PublicKeyVerify;
 import com.google.crypto.tink.integration.gcpkms.internal.GcpKmsUtil;
 import com.google.crypto.tink.signature.SignatureConfig2026;
 import com.google.crypto.tink.signature.SignaturePemKeysetReader;
+import com.google.crypto.tink.signature.SlhDsaParameters;
+import com.google.crypto.tink.signature.SlhDsaPublicKey;
+import com.google.crypto.tink.signature.SlhDsaSignKeyManager;
 import com.google.crypto.tink.signature.internal.EcdsaProtoSerialization;
 import com.google.crypto.tink.signature.internal.RsaSsaPkcs1ProtoSerialization;
 import com.google.crypto.tink.signature.internal.RsaSsaPssProtoSerialization;
+import com.google.crypto.tink.util.Bytes;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import com.google.protobuf.ByteString;
 import java.security.GeneralSecurityException;
 import javax.annotation.Nullable;
 
@@ -39,9 +46,10 @@ import javax.annotation.Nullable;
  * <p>The verifier is built upon the public key that's fetched from Cloud KMS once, and is used to
  * verify signatures locally. Cloud KMS is not contacted again.
  *
- * <p>Verifying post-quantum signatures (ML-DSA) requires a Conscrypt provider that supports ML-DSA
- * to be installed, e.g. by calling {@code Security.addProvider(Conscrypt.newProvider())}. Without
- * it, {@link Builder#build} fails for ML-DSA keys.
+ * <p>Verifying post-quantum signatures (ML-DSA and SLH-DSA) requires a Conscrypt provider that
+ * supports those algorithms to be installed, e.g. by calling {@code
+ * Security.addProvider(Conscrypt.newProvider())}. Without it, {@link Builder#build} fails for
+ * post-quantum keys.
  */
 public final class GcpKmsPublicKeyVerify implements PublicKeyVerify {
 
@@ -95,6 +103,51 @@ public final class GcpKmsPublicKeyVerify implements PublicKeyVerify {
     }
   }
 
+  /**
+   * Builds a single-key keyset handle from the raw NIST_PQC public key bytes returned by KMS.
+   *
+   * <p>Only SLH-DSA is served this way; the prehash SLH-DSA variant is not one of the algorithms
+   * the PQC keyset builder supports, so it is rejected on this path.
+   */
+  @AccessesPartialKey
+  private static KeysetHandle slhDsaKeysetHandle(
+      CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm, ByteString publicKeyBytes)
+      throws GeneralSecurityException {
+    Bytes serializedPublicKey = Bytes.copyFrom(publicKeyBytes.toByteArray());
+    Key publicKey;
+    switch (algorithm) {
+      case PQ_SIGN_SLH_DSA_SHA2_128S:
+        SlhDsaSignKeyManager.registerPair();
+        publicKey =
+            SlhDsaPublicKey.builder()
+                .setParameters(
+                    SlhDsaParameters.createSlhDsaWithSha2And128S(
+                        SlhDsaParameters.Variant.NO_PREFIX))
+                .setSerializedPublicKey(serializedPublicKey)
+                .build();
+        break;
+      default:
+        throw new GeneralSecurityException("The algorithm " + algorithm + " is not supported.");
+    }
+    return KeysetHandle.newBuilder()
+        .addEntry(KeysetHandle.importKey(publicKey).withRandomId().makePrimary())
+        .build();
+  }
+
+  /**
+   * Returns whether the given algorithm's public key is supplied as raw NIST_PQC key bytes
+   * (SLH-DSA) rather than PEM.
+   */
+  private static boolean isSlhDsa(CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm) {
+    switch (algorithm) {
+      case PQ_SIGN_SLH_DSA_SHA2_128S:
+      case PQ_SIGN_HASH_SLH_DSA_SHA2_128S_SHA256:
+        return true;
+      default:
+        return false;
+    }
+  }
+
   /** A Builder to create a {@link PublicKeyVerify} that uses a public key from Cloud KMS. */
   public static final class Builder {
     @Nullable private String keyName = null;
@@ -130,10 +183,15 @@ public final class GcpKmsPublicKeyVerify implements PublicKeyVerify {
       PublicKey publicKey = GcpKmsUtil.fetchPublicKey(kmsClient, keyName);
       CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm = publicKey.getAlgorithm();
       // Build a local Tink verifier from the public key.
-      KeysetHandle keysetHandle =
-          SignaturePemKeysetReader.newBuilder()
-              .addPem(publicKey.getPublicKey().getData().toStringUtf8(), pemKeyType(algorithm))
-              .buildPublicKeysetHandle();
+      KeysetHandle keysetHandle;
+      if (isSlhDsa(algorithm)) {
+        keysetHandle = slhDsaKeysetHandle(algorithm, publicKey.getPublicKey().getData());
+      } else {
+        keysetHandle =
+            SignaturePemKeysetReader.newBuilder()
+                .addPem(publicKey.getPublicKey().getData().toStringUtf8(), pemKeyType(algorithm))
+                .buildPublicKeysetHandle();
+      }
       return new GcpKmsPublicKeyVerify(
           keysetHandle.getPrimitive(SignatureConfig2026.get(), PublicKeyVerify.class));
     }
