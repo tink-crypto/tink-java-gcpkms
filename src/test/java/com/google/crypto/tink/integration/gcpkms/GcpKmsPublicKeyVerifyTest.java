@@ -940,6 +940,18 @@ public final class GcpKmsPublicKeyVerifyTest {
     verifier.verify(signature, signData);
   }
 
+  /** Verifies using a pre-fetched public key, i.e. without contacting Cloud KMS. */
+  private static void assertVerifiesOffline(
+      byte[] publicKey,
+      CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm,
+      String base64Signature)
+      throws Exception {
+    PublicKeyVerify verifier =
+        GcpKmsPublicKeyVerify.builder().setPublicKey(publicKey).setAlgorithm(algorithm).build();
+    byte[] signature = Base64.getDecoder().decode(base64Signature);
+    verifier.verify(signature, signData);
+  }
+
   /** Returns whether the installed Conscrypt provider supports ML-DSA. */
   private static boolean mlDsaSupported() {
     Provider provider = Security.getProvider("Conscrypt");
@@ -1129,6 +1141,186 @@ public final class GcpKmsPublicKeyVerifyTest {
     // Pre-hash SLH-DSA is detected as post-quantum but is not one of the algorithms the PQC keyset
     // builder supports, so it is rejected on the PQC path.
     assertThrows(GeneralSecurityException.class, () -> newVerifier(KEY_NAME_HASH_SLH_DSA));
+  }
+
+  @Test
+  public void verifyWorksOfflineForEcdsaP256() throws Exception {
+    assertVerifiesOffline(
+        ECDSA_P256_PUBLIC_KEY.getBytes(UTF_8),
+        CryptoKeyVersion.CryptoKeyVersionAlgorithm.EC_SIGN_P256_SHA256,
+        ECDSA_P256_SIGNATURE);
+  }
+
+  @Test
+  public void verifyWorksOfflineForMlDsa65() throws Exception {
+    Assume.assumeTrue(mlDsaSupported());
+    // Offline ML-DSA takes the PEM-encoded key, exactly as Cloud KMS GetPublicKey returns it.
+    assertVerifiesOffline(
+        mlDsaPublicKeyPem(
+                ML_DSA_65_SPKI_PREAMBLE,
+                ByteString.copyFrom(Base64.getDecoder().decode(ML_DSA_65_PUBLIC_KEY)))
+            .toByteArray(),
+        CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_65,
+        ML_DSA_65_SIGNATURE);
+  }
+
+  @Test
+  public void verifyWorksOfflineForMlDsa65ExternalMu() throws Exception {
+    Assume.assumeTrue(mlDsaSupported());
+    assertVerifiesOffline(
+        mlDsaPublicKeyPem(
+                ML_DSA_65_SPKI_PREAMBLE,
+                ByteString.copyFrom(Base64.getDecoder().decode(ML_DSA_65_PUBLIC_KEY)))
+            .toByteArray(),
+        CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_65_EXTERNAL_MU,
+        ML_DSA_65_SIGNATURE);
+  }
+
+  @Test
+  public void verifyWorksOfflineForSlhDsa() throws Exception {
+    Assume.assumeTrue(slhDsaSupported());
+    assertVerifiesOffline(
+        Base64.getDecoder().decode(SLH_DSA_PUBLIC_KEY),
+        CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_SLH_DSA_SHA2_128S,
+        SLH_DSA_SIGNATURE);
+  }
+
+  @Test
+  public void buildRejectsMixingOfflineAndOnlineParameters() throws Exception {
+    String expectedError =
+        "Set either a pre-fetched public key or a KMS client and key name, not both.";
+
+    // Case 1: All 4 parameters set
+    GeneralSecurityException e1 =
+        assertThrows(
+            GeneralSecurityException.class,
+            () ->
+                GcpKmsPublicKeyVerify.builder()
+                    .setPublicKey(ECDSA_P256_PUBLIC_KEY.getBytes(UTF_8))
+                    .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.EC_SIGN_P256_SHA256)
+                    .setKeyName(KEY_NAME_ECDSA_P256)
+                    .setKeyManagementServiceClient(kmsClient)
+                    .build());
+    assertThat(e1).hasMessageThat().contains(expectedError);
+
+    // Case 2: Only publicKey (offline) and keyName (online)
+    GeneralSecurityException e2 =
+        assertThrows(
+            GeneralSecurityException.class,
+            () ->
+                GcpKmsPublicKeyVerify.builder()
+                    .setPublicKey(ECDSA_P256_PUBLIC_KEY.getBytes(UTF_8))
+                    .setKeyName(KEY_NAME_ECDSA_P256)
+                    .build());
+    assertThat(e2).hasMessageThat().contains(expectedError);
+
+    // Case 3: Only algorithm (offline) and kmsClient (online)
+    GeneralSecurityException e3 =
+        assertThrows(
+            GeneralSecurityException.class,
+            () ->
+                GcpKmsPublicKeyVerify.builder()
+                    .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.EC_SIGN_P256_SHA256)
+                    .setKeyManagementServiceClient(kmsClient)
+                    .build());
+    assertThat(e3).hasMessageThat().contains(expectedError);
+
+    // Case 4: Both offline params and one online param (keyName)
+    GeneralSecurityException e4 =
+        assertThrows(
+            GeneralSecurityException.class,
+            () ->
+                GcpKmsPublicKeyVerify.builder()
+                    .setPublicKey(ECDSA_P256_PUBLIC_KEY.getBytes(UTF_8))
+                    .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.EC_SIGN_P256_SHA256)
+                    .setKeyName(KEY_NAME_ECDSA_P256)
+                    .build());
+    assertThat(e4).hasMessageThat().contains(expectedError);
+  }
+
+  @Test
+  public void offlineBuildFailsForUnsupportedAlgorithm() throws Exception {
+    // A classical algorithm with no PEM mapping is rejected on the PEM path.
+    assertThrows(
+        GeneralSecurityException.class,
+        () ->
+            GcpKmsPublicKeyVerify.builder()
+                .setPublicKey(ECDSA_P256_PUBLIC_KEY.getBytes(UTF_8))
+                .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.EC_SIGN_SECP256K1_SHA256)
+                .build());
+    // Pre-hash SLH-DSA is detected as post-quantum but is not one of the algorithms the PQC keyset
+    // builder supports, so it is rejected on the PQC path.
+    assertThrows(
+        GeneralSecurityException.class,
+        () ->
+            GcpKmsPublicKeyVerify.builder()
+                .setPublicKey(Base64.getDecoder().decode(SLH_DSA_PUBLIC_KEY))
+                .setAlgorithm(
+                    CryptoKeyVersion.CryptoKeyVersionAlgorithm
+                        .PQ_SIGN_HASH_SLH_DSA_SHA2_128S_SHA256)
+                .build());
+  }
+
+  @Test
+  public void offlineBuildFailsForMalformedPublicKey() throws Exception {
+    // Malformed PEM is rejected on the classical/PEM path.
+    assertThrows(
+        GeneralSecurityException.class,
+        () ->
+            GcpKmsPublicKeyVerify.builder()
+                .setPublicKey("not valid PEM bytes".getBytes(UTF_8))
+                .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.EC_SIGN_P256_SHA256)
+                .build());
+    // Malformed PEM is also rejected for ML-DSA (which uses the PEM path).
+    Assume.assumeTrue(mlDsaSupported());
+    assertThrows(
+        GeneralSecurityException.class,
+        () ->
+            GcpKmsPublicKeyVerify.builder()
+                .setPublicKey("not valid PEM bytes".getBytes(UTF_8))
+                .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_65)
+                .build());
+    // A valid ML-DSA-87 public key PEM is rejected when the requested algorithm is ML-DSA-65.
+    assertThrows(
+        GeneralSecurityException.class,
+        () ->
+            GcpKmsPublicKeyVerify.builder()
+                .setPublicKey(
+                    mlDsaPublicKeyPem(
+                            ML_DSA_87_SPKI_PREAMBLE,
+                            ByteString.copyFrom(Base64.getDecoder().decode(ML_DSA_87_PUBLIC_KEY)))
+                        .toByteArray())
+                .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_65)
+                .build());
+    // Malformed raw NIST_PQC public key bytes are rejected on the PQC path.
+    Assume.assumeTrue(slhDsaSupported());
+    assertThrows(
+        GeneralSecurityException.class,
+        () ->
+            GcpKmsPublicKeyVerify.builder()
+                .setPublicKey(new byte[] {1, 2, 3, 4})
+                .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_SLH_DSA_SHA2_128S)
+                .build());
+  }
+
+  @Test
+  public void offlineBuildFailsWhenAlgorithmIsNull() throws Exception {
+    assertThrows(
+        GeneralSecurityException.class,
+        () ->
+            GcpKmsPublicKeyVerify.builder()
+                .setPublicKey(ECDSA_P256_PUBLIC_KEY.getBytes(UTF_8))
+                .build());
+  }
+
+  @Test
+  public void offlineBuildFailsWhenPublicKeyIsNull() throws Exception {
+    assertThrows(
+        GeneralSecurityException.class,
+        () ->
+            GcpKmsPublicKeyVerify.builder()
+                .setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm.EC_SIGN_P256_SHA256)
+                .build());
   }
 
   @Test

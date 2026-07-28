@@ -44,7 +44,10 @@ import javax.annotation.Nullable;
  * <a href="https://cloud.google.com/kms/">Google Cloud KMS</a>.
  *
  * <p>The verifier is built upon the public key that's fetched from Cloud KMS once, and is used to
- * verify signatures locally. Cloud KMS is not contacted again.
+ * verify signatures locally. Cloud KMS is not contacted again. The public key can either be fetched
+ * from Cloud KMS (by setting a {@code KeyManagementServiceClient} and key name) or supplied
+ * directly by the caller (by setting a pre-fetched public key), which builds the verifier without
+ * any RPCs.
  *
  * <p>Verifying post-quantum signatures (ML-DSA and SLH-DSA) requires a Conscrypt provider that
  * supports those algorithms to be installed, e.g. by calling {@code
@@ -151,48 +154,116 @@ public final class GcpKmsPublicKeyVerify implements PublicKeyVerify {
     }
   }
 
-  /** A Builder to create a {@link PublicKeyVerify} that uses a public key from Cloud KMS. */
+  /**
+   * A Builder to create a {@link PublicKeyVerify} that uses a public key from Cloud KMS.
+   *
+   * <p>Set either a {@link #setKeyManagementServiceClient client} and {@link #setKeyName key name}
+   * to fetch the public key from Cloud KMS, or a {@link #setPublicKey pre-fetched public key} and
+   * {@link #setAlgorithm algorithm} to build the verifier without any RPCs; not both.
+   */
   public static final class Builder {
     @Nullable private String keyName = null;
     @Nullable private KeyManagementServiceClient kmsClient = null;
+    @Nullable private byte[] publicKey = null;
+    @Nullable private CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm = null;
 
     private Builder() {}
 
-    /** Set the ResourceName of the KMS key. */
+    /**
+     * Sets the ResourceName of the KMS key. Must be used together with {@link
+     * #setKeyManagementServiceClient}. Incompatible with {@link #setPublicKey} and {@link
+     * #setAlgorithm}.
+     */
     @CanIgnoreReturnValue
     public Builder setKeyName(String keyName) {
       this.keyName = keyName;
       return this;
     }
 
-    /** Set the KeyManagementServiceClient object. */
+    /**
+     * Sets the {@link KeyManagementServiceClient} object. Must be used together with {@link
+     * #setKeyName}. Incompatible with {@link #setPublicKey} and {@link #setAlgorithm}.
+     */
     @CanIgnoreReturnValue
     public Builder setKeyManagementServiceClient(KeyManagementServiceClient kmsClient) {
       this.kmsClient = kmsClient;
       return this;
     }
 
-    public PublicKeyVerify build() throws GeneralSecurityException {
-      GcpKmsUtil.validateKeyName(keyName);
-      if (kmsClient == null) {
-        throw new GeneralSecurityException("The KeyManagementServiceClient object is null.");
-      }
+    /**
+     * Set a public key that was previously fetched from Cloud KMS, to build the verifier without
+     * contacting Cloud KMS. Must be used together with {@link #setAlgorithm}.
+     *
+     * <p>{@code publicKey} must be the exact bytes returned by Cloud KMS {@code GetPublicKey} for
+     * the algorithm: the PEM-encoded key for classical algorithms, or the raw NIST_PQC key for
+     * post-quantum ones. Note that the integrity of {@code publicKey} is the caller's
+     * responsibility.
+     */
+    @CanIgnoreReturnValue
+    public Builder setPublicKey(byte[] publicKey) {
+      this.publicKey = (publicKey != null) ? publicKey.clone() : null;
+      return this;
+    }
 
+    /**
+     * Set the {@code CryptoKeyVersion} algorithm of the pre-fetched public key. Must be used
+     * together with {@link #setPublicKey}.
+     */
+    @CanIgnoreReturnValue
+    public Builder setAlgorithm(CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm) {
+      this.algorithm = algorithm;
+      return this;
+    }
+
+    /** Builds a new {@link PublicKeyVerify} instance. */
+    public PublicKeyVerify build() throws GeneralSecurityException {
       // Registers the necessary proto parsers for the supported signature key types.
       EcdsaProtoSerialization.register();
       RsaSsaPkcs1ProtoSerialization.register();
       RsaSsaPssProtoSerialization.register();
 
-      PublicKey publicKey = GcpKmsUtil.fetchPublicKey(kmsClient, keyName);
-      CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm = publicKey.getAlgorithm();
-      // Build a local Tink verifier from the public key.
+      // A verifier is either offline (caller-supplied public key) or online (key fetched from KMS).
+      boolean isOffline = (publicKey != null || algorithm != null);
+      boolean isOnline = (keyName != null || kmsClient != null);
+
+      if (isOffline && isOnline) {
+        throw new GeneralSecurityException(
+            "Set either a pre-fetched public key or a KMS client and key name, not both.");
+      }
+      if (!isOffline && !isOnline) {
+        throw new GeneralSecurityException(
+            "Must set either a pre-fetched public key or a KMS client and key name.");
+      }
+
+      CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm;
+      ByteString publicKeyData;
+      if (isOffline) {
+        if (this.publicKey == null) {
+          throw new GeneralSecurityException("The pre-fetched public key is null.");
+        }
+        if (this.algorithm == null) {
+          throw new GeneralSecurityException("The algorithm is null.");
+        }
+        algorithm = this.algorithm;
+        publicKeyData = ByteString.copyFrom(publicKey);
+      } else {
+        GcpKmsUtil.validateKeyName(keyName);
+        if (kmsClient == null) {
+          throw new GeneralSecurityException("The KeyManagementServiceClient object is null.");
+        }
+        PublicKey fetchedKey = GcpKmsUtil.fetchPublicKey(kmsClient, keyName);
+        algorithm = fetchedKey.getAlgorithm();
+        publicKeyData = fetchedKey.getPublicKey().getData();
+      }
+      // Build a local Tink verifier, choosing the raw post-quantum or PEM representation as
+      // required by the algorithm.
       KeysetHandle keysetHandle;
       if (isSlhDsa(algorithm)) {
-        keysetHandle = slhDsaKeysetHandle(algorithm, publicKey.getPublicKey().getData());
+        keysetHandle = slhDsaKeysetHandle(algorithm, publicKeyData);
       } else {
         keysetHandle =
             SignaturePemKeysetReader.newBuilder()
-                .addPem(publicKey.getPublicKey().getData().toStringUtf8(), pemKeyType(algorithm))
+                .addPem(publicKeyData.toStringUtf8(), pemKeyType(algorithm))
                 .buildPublicKeysetHandle();
       }
       return new GcpKmsPublicKeyVerify(
