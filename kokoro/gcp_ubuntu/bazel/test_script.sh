@@ -74,7 +74,7 @@ readonly CACHE_FLAGS
 
 # Build and run unit tests.
 ADDITIONAL_MANUAL_TARGETS=()
-if [[ "${RUN_MANUAL_TESTS}" == "true" ]] && false; then # TODO(b/532941360): Re-enable once GCP KMS credentials are updated.
+if [[ "${RUN_MANUAL_TESTS}" == "true" ]]; then
   ADDITIONAL_MANUAL_TARGETS+=(
     "//src/test/java/com/google/crypto/tink/integration/gcpkms:GcpKmsIntegrationTest"
   )
@@ -90,7 +90,7 @@ echo "========================================================================="
 
 # Build and run examples.
 ADDITIONAL_EXAMPLES_MANUAL_TARGETS=()
-if [[ "${RUN_MANUAL_TESTS}" == "true" ]] && false; then # TODO(b/532941360): Re-enable once GCP KMS credentials are updated.
+if [[ "${RUN_MANUAL_TESTS}" == "true" ]]; then
   ADDITIONAL_EXAMPLES_MANUAL_TARGETS=(
     "//gcs:gcs_envelope_aead_example_test"
     "//encryptedkeyset:encrypted_keyset_example_test"
