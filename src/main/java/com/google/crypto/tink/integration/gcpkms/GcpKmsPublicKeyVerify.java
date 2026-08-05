@@ -195,9 +195,7 @@ public final class GcpKmsPublicKeyVerify implements PublicKeyVerify {
      * contacting Cloud KMS. Must be used together with {@link #setAlgorithm}.
      *
      * <p>{@code publicKey} must be the exact bytes returned by Cloud KMS {@code GetPublicKey} for
-     * the algorithm: the PEM-encoded key for classical algorithms, or the raw NIST_PQC key for
-     * post-quantum ones. Note that the integrity of {@code publicKey} is the caller's
-     * responsibility.
+     * the algorithm. Note that the integrity of {@code publicKey} is the caller's responsibility.
      */
     @CanIgnoreReturnValue
     public Builder setPublicKey(byte[] publicKey) {
