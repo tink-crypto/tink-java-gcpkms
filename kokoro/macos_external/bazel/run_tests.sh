@@ -47,6 +47,7 @@ TINK_JAVA_GCPKMS_RUN_BAZEL_TESTS_ARGS+=( . )
 if [[ -n "${KOKORO_ROOT:-}" ]]; then
   TINK_JAVA_GCPKMS_RUN_BAZEL_TESTS_ARGS+=(
     "//src/test/java/com/google/crypto/tink/integration/gcpkms:GcpKmsIntegrationTest"
+    "//src/test/java/com/google/crypto/tink/integration/gcpkms:GcpKmsMacIntegrationTest"
   )
 fi
 readonly TINK_JAVA_GCPKMS_RUN_BAZEL_TESTS_ARGS

@@ -57,6 +57,27 @@ java_test(
 )
 
 java_test(
+    name = "GcpKmsMacIntegrationTest",
+    size = "small",
+    srcs = ["GcpKmsMacIntegrationTest.java"],
+    data = ["//testdata/gcp:credentials"],
+    tags = [
+        "manual",
+        "no_rbe",
+        "requires-network",
+    ],
+    deps = [
+        "@tink_java//src/main/java/com/google/crypto/tink:mac",
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_mac",
+        "@maven//:com_google_api_gax",
+        "@maven//:com_google_auth_google_auth_library_oauth2_http",
+        "@maven//:com_google_cloud_google_cloud_kms",
+        "@maven//:com_google_truth_truth",
+        "@maven//:junit_junit",
+    ],
+)
+
+java_test(
     name = "FakeCloudKmsTest",
     size = "small",
     srcs = ["FakeCloudKmsTest.java"],
