@@ -1,0 +1,42 @@
+load("@rules_java//java:defs.bzl", "java_binary")
+load("@rules_shell//shell:sh_test.bzl", "sh_test")
+
+package(default_visibility = ["//visibility:public"])
+
+licenses(["notice"])
+
+java_binary(
+    name = "mac_example",
+    srcs = ["MacExample.java"],
+    main_class = "mac.MacExample",
+    deps = [
+        "@maven//:com_google_api_gax",
+        "@maven//:com_google_auth_google_auth_library_oauth2_http",
+        "@maven//:com_google_cloud_google_cloud_kms",
+        "@tink_java//src/main/java/com/google/crypto/tink:mac",
+        "@tink_java_gcpkms//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_mac",
+    ],
+)
+
+# In order to run this test, use your own Cloud KMS key and credential
+sh_test(
+    name = "mac_example_test",
+    size = "small",
+    srcs = ["mac_example_test.sh"],
+    args = [
+        "$(rootpath :mac_example)",
+        # Change this to your MAC CryptoKeyVersion
+        "projects/tink-test-infrastructure/locations/global/keyRings/unit-and-integration-testing/cryptoKeys/mac-key/cryptoKeyVersions/1",
+        # Change this to your credential
+        "$(rootpath //testdata/gcp:credential.json)",
+    ],
+    data = [
+        ":mac_example",
+        # Change this to your credential
+        "//testdata/gcp:credential.json",
+    ],
+    tags = [
+        "manual",
+        "requires-network",
+    ],
+)

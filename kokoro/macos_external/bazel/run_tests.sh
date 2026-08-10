@@ -72,6 +72,7 @@ if [[ -n "${KOKORO_ROOT:-}" ]]; then
     "//encryptedkeyset:encrypted_keyset_example_test"
     "//envelopeaead:envelope_aead_example_test"
     "//signature:signature_example_test"
+    "//mac:mac_example_test"
   )
 fi
 readonly TINK_JAVA_GCPKMS_EXAMPLES_RUN_BAZEL_TESTS_ARGS
