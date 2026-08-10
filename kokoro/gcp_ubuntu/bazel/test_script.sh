@@ -96,6 +96,7 @@ if [[ "${RUN_MANUAL_TESTS}" == "true" ]]; then
     "//gcs:gcs_envelope_aead_example_test"
     "//encryptedkeyset:encrypted_keyset_example_test"
     "//envelopeaead:envelope_aead_example_test"
+    "//signature:signature_example_test"
   )
 fi
 readonly ADDITIONAL_EXAMPLES_MANUAL_TARGETS

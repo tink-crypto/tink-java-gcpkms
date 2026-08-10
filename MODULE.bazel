@@ -30,7 +30,7 @@ bazel_dep(name = "platforms", version = "1.0.0")
 
 _TINK_VERSION = "1.23.0"
 
-bazel_dep(name = "tink_java", dev_dependency = True)
+bazel_dep(name = "tink_java")
 archive_override(
     module_name = "tink_java",
     integrity = "sha256-uzzV/1cCE8/49oIDaM2WVgEqcjbURhF99oJTiJ5FuOg=",
