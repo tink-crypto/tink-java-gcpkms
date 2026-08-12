@@ -78,6 +78,7 @@ if [[ "${RUN_MANUAL_TESTS}" == "true" ]]; then
   ADDITIONAL_MANUAL_TARGETS+=(
     "//src/test/java/com/google/crypto/tink/integration/gcpkms:GcpKmsIntegrationTest"
     "//src/test/java/com/google/crypto/tink/integration/gcpkms:GcpKmsMacIntegrationTest"
+    "//src/test/java/com/google/crypto/tink/integration/gcpkms:GcpKmsSignatureIntegrationTest"
   )
 fi
 readonly ADDITIONAL_MANUAL_TARGETS

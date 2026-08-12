@@ -78,6 +78,33 @@ java_test(
 )
 
 java_test(
+    name = "GcpKmsSignatureIntegrationTest",
+    size = "small",
+    srcs = ["GcpKmsSignatureIntegrationTest.java"],
+    data = ["//testdata/gcp:credentials"],
+    tags = [
+        "manual",
+        "no_rbe",
+        "requires-network",
+    ],
+    deps = [
+        "@tink_java//src/main/java/com/google/crypto/tink:public_key_sign",
+        "@tink_java//src/main/java/com/google/crypto/tink:public_key_verify",
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_public_key_sign",
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_public_key_verify",
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms/internal:gcp_kms_util",
+        "@maven//:com_google_api_gax",
+        "@maven//:com_google_api_grpc_proto_google_cloud_kms_v1",
+        "@maven//:com_google_auth_google_auth_library_oauth2_http",
+        "@maven//:com_google_cloud_google_cloud_kms",
+        "@maven//:com_google_truth_truth",
+        "@maven//:junit_junit",
+        "@maven//:org_bouncycastle_bcprov_jdk18on",
+        "@maven//:org_conscrypt_conscrypt_openjdk_uber",
+    ],
+)
+
+java_test(
     name = "FakeCloudKmsTest",
     size = "small",
     srcs = ["FakeCloudKmsTest.java"],
