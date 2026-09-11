@@ -123,6 +123,19 @@ public final class GcpKmsAead implements Aead {
               .decrypt(this.keyName, request)
               .execute();
 
+      // Verify the server confirmed it received the request CRCs intact;
+      // see https://cloud.google.com/kms/docs/data-integrity-guidelines.
+      if (response.getVerifiedCiphertextCrc32c() == null
+          || !response.getVerifiedCiphertextCrc32c()) {
+        throw new GeneralSecurityException(
+            "Verifying the provided ciphertext checksum failed.");
+      }
+      if (response.getVerifiedAdditionalAuthenticatedDataCrc32c() == null
+          || !response.getVerifiedAdditionalAuthenticatedDataCrc32c()) {
+        throw new GeneralSecurityException(
+            "Verifying the provided associated data checksum failed.");
+      }
+
       byte[] plaintext = toNonNullableByteArray(response.decodePlaintext());
       long plaintextCrc32c = Hashing.crc32c().hashBytes(plaintext).padToLong();
       if (response.getPlaintextCrc32c() != plaintextCrc32c) {
@@ -247,6 +260,17 @@ public final class GcpKmsAead implements Aead {
                 .build();
 
         com.google.cloud.kms.v1.DecryptResponse decResponse = kmsClient.decrypt(decryptRequest);
+
+        // Verify the server confirmed it received the request CRCs intact;
+        // see https://cloud.google.com/kms/docs/data-integrity-guidelines.
+        if (!decResponse.getVerifiedCiphertextCrc32C()) {
+          throw new GeneralSecurityException(
+              "Verifying the provided ciphertext checksum failed.");
+        }
+        if (!decResponse.getVerifiedAdditionalAuthenticatedDataCrc32C()) {
+          throw new GeneralSecurityException(
+              "Verifying the provided associated data checksum failed.");
+        }
 
         byte[] plaintext = decResponse.getPlaintext().toByteArray();
 
