@@ -175,7 +175,11 @@ public final class GcpKmsClient implements KmsClient {
           String.format("this client is bound to %s, cannot load keys bound to %s",
               this.keyUri, uri));
     }
-    return new GcpKmsAead(cloudKms, Validators.validateKmsKeyUriAndRemovePrefix(PREFIX, uri));
+    try {
+      return new GcpKmsAead(cloudKms, Validators.validateKmsKeyUriAndRemovePrefix(PREFIX, uri));
+    } catch (IllegalArgumentException e) {
+      throw new GeneralSecurityException("invalid key URI", e);
+    }
   }
 
   /**

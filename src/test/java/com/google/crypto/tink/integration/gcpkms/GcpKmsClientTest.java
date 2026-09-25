@@ -267,4 +267,14 @@ public final class GcpKmsClientTest {
         IllegalArgumentException.class,
         () -> kmsAeadWithInvalidUri.decrypt(ciphertext, associatedData));
   }
+
+  @Test
+  public void getAead_invalidKeyUri_fails() throws Exception {
+    KmsClient client = new GcpKmsClient();
+
+    assertThrows(
+        GeneralSecurityException.class, () -> client.getAead("invalid-prefix://something"));
+    assertThrows(GeneralSecurityException.class, () -> client.getAead("gcp-kms:"));
+  }
 }
+
