@@ -12,6 +12,8 @@ java_binary(
     deps = [
         "@tink_java//src/main/java/com/google/crypto/tink:aead",
         "@tink_java//src/main/java/com/google/crypto/tink:kms_client",
+        "@tink_java//src/main/java/com/google/crypto/tink/aead:aead_config",
+        "@tink_java//src/main/java/com/google/crypto/tink/aead:aead_key_templates",
         "@tink_java//src/main/java/com/google/crypto/tink/aead:kms_envelope_aead",
         "@tink_java//src/main/java/com/google/crypto/tink/aead:predefined_aead_parameters",
         "@tink_java_gcpkms//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_client",

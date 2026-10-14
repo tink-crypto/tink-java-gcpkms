@@ -18,6 +18,7 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.KmsClient;
+import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.aead.KmsEnvelopeAead;
 import com.google.crypto.tink.aead.PredefinedAeadParameters;
 import com.google.crypto.tink.integration.gcpkms.GcpKmsClient;
@@ -62,6 +63,8 @@ public final class EnvelopeAeadExample {
       System.out.println("Associated data!");
       associatedData = args[5].getBytes(UTF_8);
     }
+    // Initialise Tink: register all AEAD key types with the Tink runtime
+    AeadConfig.register();
 
     // Read the GCP credentials and create a remote AEAD object.
     Aead remoteAead = null;

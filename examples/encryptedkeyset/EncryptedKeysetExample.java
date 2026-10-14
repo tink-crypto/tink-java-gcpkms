@@ -18,8 +18,9 @@ import static java.nio.charset.StandardCharsets.UTF_8;
 
 import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.KeysetHandle;
+import com.google.crypto.tink.RegistryConfiguration;
 import com.google.crypto.tink.TinkJsonProtoKeysetFormat;
-import com.google.crypto.tink.aead.AeadConfig2026;
+import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.aead.PredefinedAeadParameters;
 import com.google.crypto.tink.integration.gcpkms.GcpKmsClient;
 import java.nio.file.Files;
@@ -64,20 +65,22 @@ public final class EncryptedKeysetExample {
     String kekUri = args[2];
     String gcpCredentialFilename = args[3];
 
+    // Initialise Tink: register all AEAD key types with the Tink runtime
+    AeadConfig.register();
+
     // From the key-encryption key (KEK) URI, create a remote AEAD primitive for encrypting Tink
     // keysets.
     Aead kekAead = new GcpKmsClient().withCredentials(gcpCredentialFilename).getAead(kekUri);
 
     if (mode.equals(MODE_GENERATE)) {
       // [START generate-a-new-keyset]
-      KeysetHandle handle =
-          KeysetHandle.generateNew(PredefinedAeadParameters.AES128_GCM, AeadConfig2026.get());
+      KeysetHandle handle = KeysetHandle.generateNew(PredefinedAeadParameters.AES128_GCM);
       // [END generate-a-new-keyset]
 
       // [START encrypt-a-keyset]
       String serializedEncryptedKeyset =
           TinkJsonProtoKeysetFormat.serializeEncryptedKeyset(
-              handle, kekAead, EMPTY_ASSOCIATED_DATA, AeadConfig2026.get());
+              handle, kekAead, EMPTY_ASSOCIATED_DATA);
       Files.write(keyFile, serializedEncryptedKeyset.getBytes(UTF_8));
       // [END encrypt-a-keyset]
       return;
@@ -88,13 +91,10 @@ public final class EncryptedKeysetExample {
     // Read the encrypted keyset
     KeysetHandle handle =
         TinkJsonProtoKeysetFormat.parseEncryptedKeyset(
-            new String(Files.readAllBytes(keyFile), UTF_8),
-            kekAead,
-            EMPTY_ASSOCIATED_DATA,
-            AeadConfig2026.get());
+            new String(Files.readAllBytes(keyFile), UTF_8), kekAead, EMPTY_ASSOCIATED_DATA);
 
     // Get the primitive
-    Aead aead = handle.getPrimitive(AeadConfig2026.get(), Aead.class);
+    Aead aead = handle.getPrimitive(RegistryConfiguration.get(), Aead.class);
 
     Path inputFile = Paths.get(args[4]);
     Path outputFile = Paths.get(args[5]);

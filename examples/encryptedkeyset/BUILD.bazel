@@ -11,9 +11,11 @@ java_binary(
     main_class = "encryptedkeyset.EncryptedKeysetExample",
     deps = [
         "@tink_java//src/main/java/com/google/crypto/tink:aead",
+        "@tink_java//src/main/java/com/google/crypto/tink:key_templates",
         "@tink_java//src/main/java/com/google/crypto/tink:registry_cluster",
+        "@tink_java//src/main/java/com/google/crypto/tink:registry_configuration",
         "@tink_java//src/main/java/com/google/crypto/tink:tink_json_proto_keyset_format",
-        "@tink_java//src/main/java/com/google/crypto/tink/aead:aead_config2026",
+        "@tink_java//src/main/java/com/google/crypto/tink/aead:aead_config",
         "@tink_java//src/main/java/com/google/crypto/tink/aead:predefined_aead_parameters",
         "@tink_java_gcpkms//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_client",
     ],
