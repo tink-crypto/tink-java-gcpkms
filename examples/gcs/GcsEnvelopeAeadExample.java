@@ -23,7 +23,6 @@ import com.google.cloud.storage.Storage;
 import com.google.cloud.storage.StorageOptions;
 import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.KmsClient;
-import com.google.crypto.tink.aead.AeadConfig;
 import com.google.crypto.tink.aead.KmsEnvelopeAead;
 import com.google.crypto.tink.aead.PredefinedAeadParameters;
 import com.google.crypto.tink.integration.gcpkms.GcpKmsClient;
@@ -82,9 +81,6 @@ public final class GcsEnvelopeAeadExample {
     String kekUri = args[1];
     String gcpCredentialFilename = args[2];
     String gcpProjectId = args[3];
-
-    // Initialise Tink: register all AEAD key types with the Tink runtime
-    AeadConfig.register();
 
     // Read the GCP credentials and create a remote AEAD object.
     Aead remoteAead = null;
