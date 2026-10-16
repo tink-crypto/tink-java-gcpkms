@@ -28,9 +28,9 @@ bazel_dep(name = "platforms", version = "1.0.0")
 bazel_dep(name = "tink_java")
 archive_override(
     module_name = "tink_java",
-    integrity = "sha256-uzzV/1cCE8/49oIDaM2WVgEqcjbURhF99oJTiJ5FuOg=",
-    strip_prefix = "tink-java-1.23.0",
-    urls = ["https://github.com/tink-crypto/tink-java/archive/refs/tags/v1.23.0.tar.gz"],
+    integrity = "sha256-e2IHi66Q1O9xIBpXK6DmnmS2h1LaX1VVrkyXH3Fne0I=",
+    strip_prefix = "tink-java-1.24.0",
+    urls = ["https://github.com/tink-crypto/tink-java/archive/refs/tags/v1.24.0.tar.gz"],
 )
 
 bazel_dep(name = "tink_java_gcpkms")
