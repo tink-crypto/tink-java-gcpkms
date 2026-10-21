@@ -26,9 +26,7 @@ import com.google.api.services.cloudkms.v1.model.DecryptResponse;
 import com.google.api.services.cloudkms.v1.model.EncryptRequest;
 import com.google.api.services.cloudkms.v1.model.EncryptResponse;
 import com.google.common.hash.Hashing;
-import com.google.crypto.tink.aead.AeadConfig;
 import java.io.IOException;
-import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.JUnit4;
@@ -40,11 +38,6 @@ public final class FakeCloudKmsTest {
       "projects/tink-test/locations/global/keyRings/unit-test/cryptoKeys/aead-key";
   private static final String KEY_ID_2 =
       "projects/tink-test/locations/global/keyRings/unit-test/cryptoKeys/aead-key-2";
-
-  @BeforeClass
-  public static void setUpClass() throws Exception {
-    AeadConfig.register();
-  }
 
   @Test
   public void testEncryptDecryptWithValidKeyId_success() throws Exception {

@@ -34,8 +34,7 @@ import com.google.cloud.kms.v1.KeyManagementServiceSettings;
 import com.google.common.hash.Hashing;
 import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.KeysetHandle;
-import com.google.crypto.tink.RegistryConfiguration;
-import com.google.crypto.tink.aead.AeadConfig;
+import com.google.crypto.tink.aead.AeadConfig2026;
 import com.google.crypto.tink.aead.PredefinedAeadParameters;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Int64Value;
@@ -84,8 +83,9 @@ public final class GcpKmsAeadTest {
 
     private static final Aead createAead() {
       try {
-        return KeysetHandle.generateNew(PredefinedAeadParameters.AES256_GCM)
-            .getPrimitive(RegistryConfiguration.get(), Aead.class);
+        return KeysetHandle.generateNew(
+                PredefinedAeadParameters.AES256_GCM, AeadConfig2026.get())
+            .getPrimitive(AeadConfig2026.get(), Aead.class);
       } catch (GeneralSecurityException e) {
         throw new RuntimeException(e);
       }
@@ -181,8 +181,6 @@ public final class GcpKmsAeadTest {
 
   @Before
   public void setUpClass() throws Exception {
-    AeadConfig.register();
-
     // Create a server, add service, start, and register for automatic graceful shutdown.
     String serverName = InProcessServerBuilder.generateName();
     grpcCleanup.register(

@@ -41,9 +41,8 @@ import com.google.common.io.BaseEncoding;
 import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.PublicKeySign;
 import com.google.crypto.tink.PublicKeyVerify;
-import com.google.crypto.tink.RegistryConfiguration;
 import com.google.crypto.tink.signature.PredefinedSignatureParameters;
-import com.google.crypto.tink.signature.SignatureConfig;
+import com.google.crypto.tink.signature.SignatureConfig2026;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Int64Value;
 import io.grpc.ManagedChannel;
@@ -444,23 +443,24 @@ public final class GcpKmsPublicKeySignTest {
   @Before
   public void setUpClass() throws Exception {
     try {
-      SignatureConfig.register();
       KeysetHandle keysetHandleData =
-          KeysetHandle.generateNew(PredefinedSignatureParameters.ED25519);
-      dataSigner = keysetHandleData.getPrimitive(RegistryConfiguration.get(), PublicKeySign.class);
+          KeysetHandle.generateNew(
+              PredefinedSignatureParameters.ED25519, SignatureConfig2026.get());
+      dataSigner = keysetHandleData.getPrimitive(SignatureConfig2026.get(), PublicKeySign.class);
       dataVerifier =
           keysetHandleData
               .getPublicKeysetHandle()
-              .getPrimitive(RegistryConfiguration.get(), PublicKeyVerify.class);
+              .getPrimitive(SignatureConfig2026.get(), PublicKeyVerify.class);
 
       KeysetHandle keysetHandleDigest =
-          KeysetHandle.generateNew(PredefinedSignatureParameters.ECDSA_P256);
+          KeysetHandle.generateNew(
+              PredefinedSignatureParameters.ECDSA_P256, SignatureConfig2026.get());
       digestSigner =
-          keysetHandleDigest.getPrimitive(RegistryConfiguration.get(), PublicKeySign.class);
+          keysetHandleDigest.getPrimitive(SignatureConfig2026.get(), PublicKeySign.class);
       digestVerifier =
           keysetHandleDigest
               .getPublicKeysetHandle()
-              .getPrimitive(RegistryConfiguration.get(), PublicKeyVerify.class);
+              .getPrimitive(SignatureConfig2026.get(), PublicKeyVerify.class);
     } catch (GeneralSecurityException e) {
       throw new RuntimeException(e);
     }

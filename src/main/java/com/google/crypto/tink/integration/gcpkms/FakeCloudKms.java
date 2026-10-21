@@ -26,9 +26,9 @@ import com.google.api.services.cloudkms.v1.model.EncryptRequest;
 import com.google.api.services.cloudkms.v1.model.EncryptResponse;
 import com.google.common.hash.Hashing;
 import com.google.crypto.tink.Aead;
-import com.google.crypto.tink.KeyTemplates;
 import com.google.crypto.tink.KeysetHandle;
-import com.google.crypto.tink.RegistryConfiguration;
+import com.google.crypto.tink.aead.AeadConfig2026;
+import com.google.crypto.tink.aead.PredefinedAeadParameters;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -57,8 +57,8 @@ final class FakeCloudKms extends CloudKMS {
         new GoogleCredential());
     for (String keyId : validKeyIds) {
       Aead aead =
-          KeysetHandle.generateNew(KeyTemplates.get("AES128_GCM"))
-              .getPrimitive(RegistryConfiguration.get(), Aead.class);
+          KeysetHandle.generateNew(PredefinedAeadParameters.AES128_GCM, AeadConfig2026.get())
+              .getPrimitive(AeadConfig2026.get(), Aead.class);
       aeads.put(keyId, aead);
     }
   }

@@ -33,8 +33,7 @@ import com.google.cloud.kms.v1.MacVerifyResponse;
 import com.google.common.hash.Hashing;
 import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.Mac;
-import com.google.crypto.tink.RegistryConfiguration;
-import com.google.crypto.tink.mac.MacConfig;
+import com.google.crypto.tink.mac.MacConfig2026;
 import com.google.crypto.tink.mac.PredefinedMacParameters;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Int64Value;
@@ -169,10 +168,10 @@ public final class GcpKmsMacTest {
 
   @Before
   public void setUp() throws Exception {
-    MacConfig.register();
     KeysetHandle keysetHandle =
-        KeysetHandle.generateNew(PredefinedMacParameters.HMAC_SHA256_128BITTAG);
-    backingMac = keysetHandle.getPrimitive(RegistryConfiguration.get(), Mac.class);
+        KeysetHandle.generateNew(
+            PredefinedMacParameters.HMAC_SHA256_128BITTAG, MacConfig2026.get());
+    backingMac = keysetHandle.getPrimitive(MacConfig2026.get(), Mac.class);
 
     String serverName = InProcessServerBuilder.generateName();
     grpcCleanup.register(
