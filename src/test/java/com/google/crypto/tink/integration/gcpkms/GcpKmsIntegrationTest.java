@@ -25,9 +25,10 @@ import com.google.crypto.tink.InsecureSecretKeyAccess;
 import com.google.crypto.tink.KeyTemplate;
 import com.google.crypto.tink.KeyTemplates;
 import com.google.crypto.tink.KeysetHandle;
-import com.google.crypto.tink.RegistryConfiguration;
 import com.google.crypto.tink.TinkProtoKeysetFormat;
 import com.google.crypto.tink.aead.AeadConfig;
+import com.google.crypto.tink.aead.AeadConfig2026;
+import com.google.crypto.tink.aead.KmsAeadConfig2026;
 import com.google.crypto.tink.aead.KmsAeadKeyManager;
 import com.google.crypto.tink.aead.KmsEnvelopeAeadKeyManager;
 import com.google.crypto.tink.subtle.Base64;
@@ -67,9 +68,11 @@ public class GcpKmsIntegrationTest {
   @Test
   public void kmsAead_encryptDecrypt() throws Exception {
     KeysetHandle keysetHandle =
-        KeysetHandle.generateNew(KmsAeadKeyManager.createKeyTemplate(GCP_KMS_TEST_KEY_URI));
+        KeysetHandle.generateNew(
+            KmsAeadKeyManager.createKeyTemplate(GCP_KMS_TEST_KEY_URI).toParameters(),
+            KmsAeadConfig2026.getUsingGlobalKmsClients());
 
-    Aead aead = keysetHandle.getPrimitive(RegistryConfiguration.get(), Aead.class);
+    Aead aead = keysetHandle.getPrimitive(KmsAeadConfig2026.getUsingGlobalKmsClients(), Aead.class);
 
     byte[] plaintext = "plaintext".getBytes(UTF_8);
     byte[] associatedData = "associatedData".getBytes(UTF_8);
@@ -89,8 +92,10 @@ public class GcpKmsIntegrationTest {
   @Test
   public void kmsAeadEncryptAndDecryptWithoutAssociatedData_success() throws Exception {
     KeysetHandle keysetHandle =
-        KeysetHandle.generateNew(KmsAeadKeyManager.createKeyTemplate(GCP_KMS_TEST_KEY_URI));
-    Aead aead = keysetHandle.getPrimitive(RegistryConfiguration.get(), Aead.class);
+        KeysetHandle.generateNew(
+            KmsAeadKeyManager.createKeyTemplate(GCP_KMS_TEST_KEY_URI).toParameters(),
+            KmsAeadConfig2026.getUsingGlobalKmsClients());
+    Aead aead = keysetHandle.getPrimitive(KmsAeadConfig2026.getUsingGlobalKmsClients(), Aead.class);
 
     byte[] plaintext = "plaintext".getBytes(UTF_8);
     byte[] empty = "".getBytes(UTF_8);
@@ -107,12 +112,17 @@ public class GcpKmsIntegrationTest {
   @Test
   public void kmsAeadDecryptWithDifferentKeyUri_fails() throws Exception {
     KeysetHandle keysetHandle =
-        KeysetHandle.generateNew(KmsAeadKeyManager.createKeyTemplate(GCP_KMS_TEST_KEY_URI));
-    Aead aead = keysetHandle.getPrimitive(RegistryConfiguration.get(), Aead.class);
+        KeysetHandle.generateNew(
+            KmsAeadKeyManager.createKeyTemplate(GCP_KMS_TEST_KEY_URI).toParameters(),
+            KmsAeadConfig2026.getUsingGlobalKmsClients());
+    Aead aead = keysetHandle.getPrimitive(KmsAeadConfig2026.getUsingGlobalKmsClients(), Aead.class);
 
     KeysetHandle keysetHandle2 =
-        KeysetHandle.generateNew(KmsAeadKeyManager.createKeyTemplate(GCP_KMS_TEST_KEY_URI_2));
-    Aead aead2 = keysetHandle2.getPrimitive(RegistryConfiguration.get(), Aead.class);
+        KeysetHandle.generateNew(
+            KmsAeadKeyManager.createKeyTemplate(GCP_KMS_TEST_KEY_URI_2).toParameters(),
+            KmsAeadConfig2026.getUsingGlobalKmsClients());
+    Aead aead2 =
+        keysetHandle2.getPrimitive(KmsAeadConfig2026.getUsingGlobalKmsClients(), Aead.class);
 
     byte[] plaintext = "plaintext".getBytes(UTF_8);
     byte[] associatedData = "associatedData".getBytes(UTF_8);
@@ -134,9 +144,11 @@ public class GcpKmsIntegrationTest {
     KeyTemplate envelopeTemplate =
         KmsEnvelopeAeadKeyManager.createKeyTemplate(
             GCP_KMS_TEST_KEY_URI, KeyTemplates.get("AES128_CTR_HMAC_SHA256"));
-    KeysetHandle keysetHandle = KeysetHandle.generateNew(envelopeTemplate);
+    KeysetHandle keysetHandle =
+        KeysetHandle.generateNew(
+            envelopeTemplate.toParameters(), KmsAeadConfig2026.getUsingGlobalKmsClients());
 
-    Aead aead = keysetHandle.getPrimitive(RegistryConfiguration.get(), Aead.class);
+    Aead aead = keysetHandle.getPrimitive(KmsAeadConfig2026.getUsingGlobalKmsClients(), Aead.class);
 
     byte[] plaintext = "plaintext".getBytes(UTF_8);
     byte[] associatedData = "associatedData".getBytes(UTF_8);
@@ -158,14 +170,19 @@ public class GcpKmsIntegrationTest {
     KeysetHandle keysetHandle =
         KeysetHandle.generateNew(
             KmsEnvelopeAeadKeyManager.createKeyTemplate(
-                GCP_KMS_TEST_KEY_URI, KeyTemplates.get("AES128_CTR_HMAC_SHA256")));
-    Aead aead = keysetHandle.getPrimitive(RegistryConfiguration.get(), Aead.class);
+                    GCP_KMS_TEST_KEY_URI, KeyTemplates.get("AES128_CTR_HMAC_SHA256"))
+                .toParameters(),
+            KmsAeadConfig2026.getUsingGlobalKmsClients());
+    Aead aead = keysetHandle.getPrimitive(KmsAeadConfig2026.getUsingGlobalKmsClients(), Aead.class);
 
     KeysetHandle keysetHandle2 =
         KeysetHandle.generateNew(
             KmsEnvelopeAeadKeyManager.createKeyTemplate(
-                GCP_KMS_TEST_KEY_URI_2, KeyTemplates.get("AES128_CTR_HMAC_SHA256")));
-    Aead aead2 = keysetHandle2.getPrimitive(RegistryConfiguration.get(), Aead.class);
+                    GCP_KMS_TEST_KEY_URI_2, KeyTemplates.get("AES128_CTR_HMAC_SHA256"))
+                .toParameters(),
+            KmsAeadConfig2026.getUsingGlobalKmsClients());
+    Aead aead2 =
+        keysetHandle2.getPrimitive(KmsAeadConfig2026.getUsingGlobalKmsClients(), Aead.class);
 
     byte[] plaintext = "plaintext".getBytes(UTF_8);
     byte[] associatedData = "associatedData".getBytes(UTF_8);
@@ -212,21 +229,26 @@ public class GcpKmsIntegrationTest {
     byte[] ciphertext = Base64.decode("AcpCNBevmQnr9momhlKKEyKDOCj5bMfizqC22N/hLZd58LFpC+r99C0=");
 
     KeysetHandle kmsKeysetHandle =
-        KeysetHandle.generateNew(KmsAeadKeyManager.createKeyTemplate(keyUri));
-    Aead kmsAead = kmsKeysetHandle.getPrimitive(RegistryConfiguration.get(), Aead.class);
+        KeysetHandle.generateNew(
+            KmsAeadKeyManager.createKeyTemplate(keyUri).toParameters(),
+            KmsAeadConfig2026.getUsingGlobalKmsClients());
+    Aead kmsAead =
+        kmsKeysetHandle.getPrimitive(KmsAeadConfig2026.getUsingGlobalKmsClients(), Aead.class);
 
     byte[] unwrappedKeyset =
         kmsAead.decrypt(wrappedKeyset, /* associatedData= */ "".getBytes(UTF_8));
     KeysetHandle handle =
-        TinkProtoKeysetFormat.parseKeyset(unwrappedKeyset, InsecureSecretKeyAccess.get());
-    Aead aead = handle.getPrimitive(RegistryConfiguration.get(), Aead.class);
+        TinkProtoKeysetFormat.parseKeyset(
+            unwrappedKeyset, InsecureSecretKeyAccess.get(), AeadConfig2026.get());
+    Aead aead = handle.getPrimitive(AeadConfig2026.get(), Aead.class);
     byte[] decrypted = aead.decrypt(ciphertext, /* associatedData= */ "animal".getBytes(UTF_8));
     assertThat(decrypted).isEqualTo("elephant".getBytes(UTF_8));
 
     // CleartextKeysetHandle and BinaryKeysetReader instead of TinkProtoKeysetFormat also works
     KeysetHandle handle2 =
-        TinkProtoKeysetFormat.parseKeyset(unwrappedKeyset, InsecureSecretKeyAccess.get());
-    Aead aead2 = handle2.getPrimitive(RegistryConfiguration.get(), Aead.class);
+        TinkProtoKeysetFormat.parseKeyset(
+            unwrappedKeyset, InsecureSecretKeyAccess.get(), AeadConfig2026.get());
+    Aead aead2 = handle2.getPrimitive(AeadConfig2026.get(), Aead.class);
     byte[] decrypted2 = aead2.decrypt(ciphertext, /* associatedData= */ "animal".getBytes(UTF_8));
     assertThat(decrypted2).isEqualTo("elephant".getBytes(UTF_8));
 
@@ -234,6 +256,7 @@ public class GcpKmsIntegrationTest {
     assertThrows(
         GeneralSecurityException.class,
         () ->
-            TinkProtoKeysetFormat.parseEncryptedKeyset(wrappedKeyset, kmsAead, "".getBytes(UTF_8)));
+            TinkProtoKeysetFormat.parseEncryptedKeyset(
+                wrappedKeyset, kmsAead, "".getBytes(UTF_8), AeadConfig2026.get()));
   }
 }

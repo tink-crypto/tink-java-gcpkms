@@ -28,8 +28,8 @@ import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.KmsClient;
 import com.google.crypto.tink.KmsClients;
 import com.google.crypto.tink.KmsClientsTestUtil;
-import com.google.crypto.tink.RegistryConfiguration;
 import com.google.crypto.tink.aead.AeadConfig;
+import com.google.crypto.tink.aead.KmsAeadConfig2026;
 import com.google.crypto.tink.aead.KmsAeadKeyManager;
 import com.google.crypto.tink.aead.KmsEnvelopeAead;
 import com.google.crypto.tink.aead.KmsEnvelopeAeadKeyManager;
@@ -153,16 +153,20 @@ public final class GcpKmsClientTest {
     KeyTemplate dekTemplate = KeyTemplates.get("AES128_CTR_HMAC_SHA256_RAW");
     // getPrimitive works for keyUri
     KeyTemplate envelopeTemplate = KmsEnvelopeAeadKeyManager.createKeyTemplate(keyUri, dekTemplate);
-    KeysetHandle handle = KeysetHandle.generateNew(envelopeTemplate);
-    Aead unused = handle.getPrimitive(RegistryConfiguration.get(), Aead.class);
+    KeysetHandle handle =
+        KeysetHandle.generateNew(
+            envelopeTemplate.toParameters(), KmsAeadConfig2026.getUsingGlobalKmsClients());
+    Aead unused = handle.getPrimitive(KmsAeadConfig2026.getUsingGlobalKmsClients(), Aead.class);
 
     // getPrimitive does not work for keyUri2
     KeyTemplate envelopeTemplate2 =
         KmsEnvelopeAeadKeyManager.createKeyTemplate(keyUri2, dekTemplate);
-    KeysetHandle handle2 = KeysetHandle.generateNew(envelopeTemplate2);
+    KeysetHandle handle2 =
+        KeysetHandle.generateNew(
+            envelopeTemplate2.toParameters(), KmsAeadConfig2026.getUsingGlobalKmsClients());
     assertThrows(
         GeneralSecurityException.class,
-        () -> handle2.getPrimitive(RegistryConfiguration.get(), Aead.class));
+        () -> handle2.getPrimitive(KmsAeadConfig2026.getUsingGlobalKmsClients(), Aead.class));
   }
 
   @Test
@@ -182,15 +186,19 @@ public final class GcpKmsClientTest {
     byte[] associatedData = "associatedData".getBytes(UTF_8);
 
     KeyTemplate kmsTemplate = KmsAeadKeyManager.createKeyTemplate(keyUri);
-    KeysetHandle handle = KeysetHandle.generateNew(kmsTemplate);
-    Aead kmsAead = handle.getPrimitive(RegistryConfiguration.get(), Aead.class);
+    KeysetHandle handle =
+        KeysetHandle.generateNew(
+            kmsTemplate.toParameters(), KmsAeadConfig2026.getUsingGlobalKmsClients());
+    Aead kmsAead = handle.getPrimitive(KmsAeadConfig2026.getUsingGlobalKmsClients(), Aead.class);
     byte[] ciphertext = kmsAead.encrypt(plaintext, associatedData);
     byte[] decrypted = kmsAead.decrypt(ciphertext, associatedData);
     assertThat(decrypted).isEqualTo(plaintext);
 
     KeyTemplate kmsTemplate2 = KmsAeadKeyManager.createKeyTemplate(keyUri2);
-    KeysetHandle handle2 = KeysetHandle.generateNew(kmsTemplate2);
-    Aead kmsAead2 = handle2.getPrimitive(RegistryConfiguration.get(), Aead.class);
+    KeysetHandle handle2 =
+        KeysetHandle.generateNew(
+            kmsTemplate2.toParameters(), KmsAeadConfig2026.getUsingGlobalKmsClients());
+    Aead kmsAead2 = handle2.getPrimitive(KmsAeadConfig2026.getUsingGlobalKmsClients(), Aead.class);
     byte[] ciphertext2 = kmsAead2.encrypt(plaintext, associatedData);
     byte[] decrypted2 = kmsAead2.decrypt(ciphertext2, associatedData);
     assertThat(decrypted2).isEqualTo(plaintext);
