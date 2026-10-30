@@ -23,7 +23,6 @@ import static org.junit.Assert.assertThrows;
 import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.InsecureSecretKeyAccess;
 import com.google.crypto.tink.KeyTemplate;
-import com.google.crypto.tink.KeyTemplates;
 import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.TinkProtoKeysetFormat;
 import com.google.crypto.tink.aead.AeadConfig;
@@ -31,6 +30,7 @@ import com.google.crypto.tink.aead.AeadConfig2026;
 import com.google.crypto.tink.aead.KmsAeadConfig2026;
 import com.google.crypto.tink.aead.KmsAeadKeyManager;
 import com.google.crypto.tink.aead.KmsEnvelopeAeadKeyManager;
+import com.google.crypto.tink.aead.PredefinedAeadParameters;
 import com.google.crypto.tink.subtle.Base64;
 import java.security.GeneralSecurityException;
 import java.util.Optional;
@@ -143,7 +143,7 @@ public class GcpKmsIntegrationTest {
   public void kmsEnvelopeAead_encryptDecrypt() throws Exception {
     KeyTemplate envelopeTemplate =
         KmsEnvelopeAeadKeyManager.createKeyTemplate(
-            GCP_KMS_TEST_KEY_URI, KeyTemplates.get("AES128_CTR_HMAC_SHA256"));
+            GCP_KMS_TEST_KEY_URI, KeyTemplate.createFrom(PredefinedAeadParameters.AES128_CTR_HMAC_SHA256));
     KeysetHandle keysetHandle =
         KeysetHandle.generateNew(
             envelopeTemplate.toParameters(), KmsAeadConfig2026.getUsingGlobalKmsClients());
@@ -170,7 +170,7 @@ public class GcpKmsIntegrationTest {
     KeysetHandle keysetHandle =
         KeysetHandle.generateNew(
             KmsEnvelopeAeadKeyManager.createKeyTemplate(
-                    GCP_KMS_TEST_KEY_URI, KeyTemplates.get("AES128_CTR_HMAC_SHA256"))
+                    GCP_KMS_TEST_KEY_URI, KeyTemplate.createFrom(PredefinedAeadParameters.AES128_CTR_HMAC_SHA256))
                 .toParameters(),
             KmsAeadConfig2026.getUsingGlobalKmsClients());
     Aead aead = keysetHandle.getPrimitive(KmsAeadConfig2026.getUsingGlobalKmsClients(), Aead.class);
@@ -178,7 +178,7 @@ public class GcpKmsIntegrationTest {
     KeysetHandle keysetHandle2 =
         KeysetHandle.generateNew(
             KmsEnvelopeAeadKeyManager.createKeyTemplate(
-                    GCP_KMS_TEST_KEY_URI_2, KeyTemplates.get("AES128_CTR_HMAC_SHA256"))
+                    GCP_KMS_TEST_KEY_URI_2, KeyTemplate.createFrom(PredefinedAeadParameters.AES128_CTR_HMAC_SHA256))
                 .toParameters(),
             KmsAeadConfig2026.getUsingGlobalKmsClients());
     Aead aead2 =

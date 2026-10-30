@@ -23,12 +23,12 @@ import static org.junit.Assert.assertThrows;
 
 import com.google.crypto.tink.Aead;
 import com.google.crypto.tink.KeyTemplate;
-import com.google.crypto.tink.KeyTemplates;
 import com.google.crypto.tink.KeysetHandle;
 import com.google.crypto.tink.KmsClient;
 import com.google.crypto.tink.KmsClients;
 import com.google.crypto.tink.KmsClientsTestUtil;
 import com.google.crypto.tink.aead.AeadConfig;
+import com.google.crypto.tink.aead.AesCtrHmacAeadParameters;
 import com.google.crypto.tink.aead.KmsAeadConfig2026;
 import com.google.crypto.tink.aead.KmsAeadKeyManager;
 import com.google.crypto.tink.aead.KmsEnvelopeAead;
@@ -150,7 +150,16 @@ public final class GcpKmsClientTest {
 
     registerGcpKmsClient(keyUri, new FakeCloudKms(asList(keyId, keyId2)));
 
-    KeyTemplate dekTemplate = KeyTemplates.get("AES128_CTR_HMAC_SHA256_RAW");
+    KeyTemplate dekTemplate =
+        KeyTemplate.createFrom(
+            AesCtrHmacAeadParameters.builder()
+                .setAesKeySizeBytes(16)
+                .setHmacKeySizeBytes(32)
+                .setTagSizeBytes(16)
+                .setIvSizeBytes(16)
+                .setHashType(AesCtrHmacAeadParameters.HashType.SHA256)
+                .setVariant(AesCtrHmacAeadParameters.Variant.NO_PREFIX)
+                .build());
     // getPrimitive works for keyUri
     KeyTemplate envelopeTemplate = KmsEnvelopeAeadKeyManager.createKeyTemplate(keyUri, dekTemplate);
     KeysetHandle handle =
