@@ -78,6 +78,15 @@ java_library(
 )
 
 java_library(
+    name = "gcp_kms_verification_keys",
+    srcs = ["GcpKmsVerificationKeys.java"],
+    deps = [
+        "@maven//:com_google_api_grpc_proto_google_cloud_kms_v1",
+        "@maven//:com_google_crypto_tink_tink",
+    ],
+)
+
+java_library(
     name = "gcp_kms_mac",
     srcs = ["GcpKmsMac.java"],
     deps = [

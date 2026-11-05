@@ -200,6 +200,28 @@ java_test(
 )
 
 java_test(
+    name = "GcpKmsVerificationKeysTest",
+    size = "small",
+    srcs = ["GcpKmsVerificationKeysTest.java"],
+    deps = [
+        "@tink_java//src/main/java/com/google/crypto/tink:key",
+        "@tink_java//src/main/java/com/google/crypto/tink:key_status",
+        "@tink_java//src/main/java/com/google/crypto/tink:public_key_verify",
+        "@tink_java//src/main/java/com/google/crypto/tink:registry_cluster",
+        "//src/main/java/com/google/crypto/tink/integration/gcpkms:gcp_kms_verification_keys",
+        "@tink_java//src/main/java/com/google/crypto/tink/signature:ecdsa_parameters",
+        "@tink_java//src/main/java/com/google/crypto/tink/signature:ecdsa_public_key",
+        "@tink_java//src/main/java/com/google/crypto/tink/signature:ml_dsa_parameters",
+        "@tink_java//src/main/java/com/google/crypto/tink/signature:ml_dsa_public_key",
+        "@tink_java//src/main/java/com/google/crypto/tink/signature:signature_config_2026",
+        "@maven//:com_google_api_grpc_proto_google_cloud_kms_v1",
+        "@maven//:com_google_truth_truth",
+        "@maven//:junit_junit",
+        "@maven//:org_conscrypt_conscrypt_openjdk_uber",
+    ],
+)
+
+java_test(
     name = "GcpKmsMacTest",
     size = "small",
     srcs = ["GcpKmsMacTest.java"],
