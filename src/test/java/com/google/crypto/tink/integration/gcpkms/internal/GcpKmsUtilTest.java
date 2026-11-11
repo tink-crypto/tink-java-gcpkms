@@ -245,6 +245,28 @@ public final class GcpKmsUtilTest {
   }
 
   @Test
+  public void fetchPublicKey_slhDsaPemResponse_retriesInNistPqcFormat() throws Exception {
+    // When KMS serves an SLH-DSA key in PEM format, GcpKmsUtil re-fetches it in NIST_PQC format.
+    ByteString nistPqcData = ByteString.copyFromUtf8("raw slh dsa key bytes");
+    fakeKms.setGetPublicKeyHandler((request, responseObserver) -> {
+      ByteString data =
+          (request.getPublicKeyFormat() == PublicKey.PublicKeyFormat.NIST_PQC)
+              ? nistPqcData
+              : PUBLIC_KEY_DATA;
+      responseObserver.onNext(
+          publicKeyResponse(request).toBuilder()
+              .setAlgorithm(CryptoKeyVersionAlgorithm.PQ_SIGN_SLH_DSA_SHA2_128S)
+              .setPublicKey(checksummedData(data))
+              .build());
+      responseObserver.onCompleted();
+    });
+
+    PublicKey publicKey = GcpKmsUtil.fetchPublicKey(kmsClient, VALID_KEY_NAME);
+    assertThat(publicKey.getPublicKeyFormat()).isEqualTo(PublicKey.PublicKeyFormat.NIST_PQC);
+    assertThat(publicKey.getPublicKey().getData()).isEqualTo(nistPqcData);
+  }
+
+  @Test
   public void fetchPublicKey_pemRequestFails_throws() throws Exception {
     // A failure that is not the "Only NIST_PQC format is supported" signal is not retried.
     fakeKms.setGetPublicKeyHandler(

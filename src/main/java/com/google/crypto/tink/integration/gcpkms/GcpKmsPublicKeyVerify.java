@@ -141,20 +141,6 @@ public final class GcpKmsPublicKeyVerify implements PublicKeyVerify {
   }
 
   /**
-   * Returns whether the given algorithm's public key is supplied as raw NIST_PQC key bytes
-   * (SLH-DSA) rather than PEM.
-   */
-  private static boolean isSlhDsa(CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm) {
-    switch (algorithm) {
-      case PQ_SIGN_SLH_DSA_SHA2_128S:
-      case PQ_SIGN_HASH_SLH_DSA_SHA2_128S_SHA256:
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  /**
    * A Builder to create a {@link PublicKeyVerify} that uses a public key from Cloud KMS.
    *
    * <p>Set either a {@link #setKeyManagementServiceClient client} and {@link #setKeyName key name}
@@ -256,7 +242,7 @@ public final class GcpKmsPublicKeyVerify implements PublicKeyVerify {
       // Build a local Tink verifier, choosing the raw post-quantum or PEM representation as
       // required by the algorithm.
       KeysetHandle keysetHandle;
-      if (isSlhDsa(algorithm)) {
+      if (GcpKmsUtil.isSlhDsa(algorithm)) {
         keysetHandle = slhDsaKeysetHandle(algorithm, publicKeyData);
       } else {
         keysetHandle =

@@ -17,6 +17,7 @@
 package com.google.crypto.tink.integration.gcpkms.internal;
 
 import com.google.cloud.kms.v1.ChecksummedData;
+import com.google.cloud.kms.v1.CryptoKeyVersion;
 import com.google.cloud.kms.v1.GetPublicKeyRequest;
 import com.google.cloud.kms.v1.KeyManagementServiceClient;
 import com.google.cloud.kms.v1.PublicKey;
@@ -94,6 +95,20 @@ public final class GcpKmsUtil {
   }
 
   /**
+   * Returns whether the given algorithm's public key is supplied as raw NIST_PQC key bytes
+   * (SLH-DSA) rather than PEM.
+   */
+  public static boolean isSlhDsa(CryptoKeyVersion.CryptoKeyVersionAlgorithm algorithm) {
+    switch (algorithm) {
+      case PQ_SIGN_SLH_DSA_SHA2_128S:
+      case PQ_SIGN_HASH_SLH_DSA_SHA2_128S_SHA256:
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  /**
    * Fetches the public key for {@code keyName} from KMS and verifies its integrity.
    *
    * <p>The key is initially requested in PEM format, but also falls back to NIST_PQC format for
@@ -101,7 +116,7 @@ public final class GcpKmsUtil {
    */
   public static PublicKey fetchPublicKey(KeyManagementServiceClient kmsClient, String keyName)
       throws GeneralSecurityException {
-    PublicKey publicKey;
+    PublicKey publicKey = null;
     GetPublicKeyRequest.Builder requestBuilder = GetPublicKeyRequest.newBuilder().setName(keyName);
 
     try {
@@ -109,16 +124,19 @@ public final class GcpKmsUtil {
           kmsClient.getPublicKey(
               requestBuilder.setPublicKeyFormat(PublicKey.PublicKeyFormat.PEM).build());
     } catch (RuntimeException e) {
-      // Keys that do not support PEM (e.g. SLH-DSA) report this; retry in NIST_PQC format.
+      // Keys that do not support PEM report this; retry in NIST_PQC format.
       if (e.getMessage() == null || !e.getMessage().contains("Only NIST_PQC format is supported")) {
         throw new GeneralSecurityException("The KMS GetPublicKey failed.", e);
       }
+    }
+
+    if (publicKey == null || isSlhDsa(publicKey.getAlgorithm())) {
       try {
         publicKey =
             kmsClient.getPublicKey(
                 requestBuilder.setPublicKeyFormat(PublicKey.PublicKeyFormat.NIST_PQC).build());
-      } catch (RuntimeException e2) {
-        throw new GeneralSecurityException("The KMS GetPublicKey failed.", e2);
+      } catch (RuntimeException e) {
+        throw new GeneralSecurityException("The KMS GetPublicKey failed.", e);
       }
     }
 

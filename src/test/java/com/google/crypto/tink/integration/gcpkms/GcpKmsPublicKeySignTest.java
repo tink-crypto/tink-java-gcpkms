@@ -257,19 +257,9 @@ public final class GcpKmsPublicKeySignTest {
     @Override
     public void getPublicKey(
         GetPublicKeyRequest request, StreamObserver<PublicKey> responseObserver) {
-      // SLH-DSA keys do not support PEM; KMS only returns them in NIST_PQC format.
-      boolean isSlhDsa =
-          request.getName().equals(KEY_NAME_FOR_SLH_DSA)
-              || request.getName().equals(KEY_NAME_FOR_HASH_SLH_DSA);
-      if (isSlhDsa && request.getPublicKeyFormat() != PublicKey.PublicKeyFormat.NIST_PQC) {
-        responseObserver.onError(
-            Status.INVALID_ARGUMENT
-                .withDescription("Only NIST_PQC format is supported for SLH-DSA.")
-                .asRuntimeException());
-        return;
-      }
       boolean isPqc =
-          isSlhDsa
+          request.getName().equals(KEY_NAME_FOR_SLH_DSA)
+              || request.getName().equals(KEY_NAME_FOR_HASH_SLH_DSA)
               || request.getName().equals(KEY_NAME_FOR_ML_DSA_44)
               || request.getName().equals(KEY_NAME_FOR_ML_DSA_65)
               || request.getName().equals(KEY_NAME_FOR_ML_DSA_87)

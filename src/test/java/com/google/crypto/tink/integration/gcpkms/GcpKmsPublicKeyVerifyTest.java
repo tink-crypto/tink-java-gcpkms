@@ -833,27 +833,20 @@ public final class GcpKmsPublicKeyVerifyTest {
           algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_ML_DSA_87_EXTERNAL_MU;
           break;
         case KEY_NAME_SLH_DSA_128S:
-          // Unlike ML-DSA, SLH-DSA and Pre-hash SLH-DSA keys are not available in PEM format, so
-          // KMS rejects the initial PEM request; the library retries in NIST_PQC format.
-          if (request.getPublicKeyFormat() != PublicKey.PublicKeyFormat.NIST_PQC) {
-            responseObserver.onError(
-                Status.INVALID_ARGUMENT
-                    .withDescription("Only NIST_PQC format is supported")
-                    .asRuntimeException());
-            return;
-          }
-          data = ByteString.copyFrom(Base64.getDecoder().decode(SLH_DSA_PUBLIC_KEY));
+          // Cloud KMS serves SLH-DSA in PEM by default, but Tink requires the raw NIST_PQC key
+          // bytes and re-fetches in NIST_PQC format. Return a placeholder for the initial PEM
+          // request so the test verifies that the NIST_PQC response is used.
+          data =
+              (request.getPublicKeyFormat() == PublicKey.PublicKeyFormat.NIST_PQC)
+                  ? ByteString.copyFrom(Base64.getDecoder().decode(SLH_DSA_PUBLIC_KEY))
+                  : ByteString.copyFromUtf8("unused pem data");
           algorithm = CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_SLH_DSA_SHA2_128S;
           break;
         case KEY_NAME_HASH_SLH_DSA:
-          if (request.getPublicKeyFormat() != PublicKey.PublicKeyFormat.NIST_PQC) {
-            responseObserver.onError(
-                Status.INVALID_ARGUMENT
-                    .withDescription("Only NIST_PQC format is supported")
-                    .asRuntimeException());
-            return;
-          }
-          data = ByteString.copyFrom(Base64.getDecoder().decode(SLH_DSA_PUBLIC_KEY));
+          data =
+              (request.getPublicKeyFormat() == PublicKey.PublicKeyFormat.NIST_PQC)
+                  ? ByteString.copyFrom(Base64.getDecoder().decode(SLH_DSA_PUBLIC_KEY))
+                  : ByteString.copyFromUtf8("unused pem data");
           algorithm =
               CryptoKeyVersion.CryptoKeyVersionAlgorithm.PQ_SIGN_HASH_SLH_DSA_SHA2_128S_SHA256;
           break;
